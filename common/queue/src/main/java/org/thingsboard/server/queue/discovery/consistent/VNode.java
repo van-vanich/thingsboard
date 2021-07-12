@@ -1,26 +1,30 @@
 package org.thingsboard.server.queue.discovery.consistent;
 
+import com.google.common.hash.HashFunction;
+import com.google.common.hash.Hashing;
+
 import java.util.ArrayList;
 
 public class VNode {
-    private org.algo.Node node;
+    private Node node;
     private ArrayList<Integer> hashVNode = new ArrayList<>();
     private final int cntVNode = 200;
     private int nowInBasket = 0;
 
-    public VNode(org.algo.Node node) {
+    public VNode(Node node) {
         this.node = node;
         createHash();
     }
 
     private void createHash() {
         for (int i=0; i<cntVNode; i++) {
-            int hash = (int)(Math.random() * Integer.MAX_VALUE);
-            hashVNode.add(hash);
+            HashFunction hash = Hashing.murmur3_32();
+//            System.out.println((hash.newHasher().putInt(i).hash().asInt() + Integer.MAX_VALUE) % Integer.MAX_VALUE);
+            hashVNode.add((hash.newHasher().putInt(i).putInt(node.hashCode()).hash().asInt() + Integer.MAX_VALUE ) % Integer.MAX_VALUE);
         }
     }
 
-    public org.algo.Node getNode() {
+    public Node getNode() {
         return node;
     }
 

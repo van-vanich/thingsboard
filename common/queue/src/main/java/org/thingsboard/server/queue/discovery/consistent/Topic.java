@@ -1,20 +1,9 @@
 package org.thingsboard.server.queue.discovery.consistent;
 
+import lombok.Data;
+
+@Data
 public class Topic {
-    private String name;
+    private final String name;
 
-    public Topic(String name) {
-        this.name = name;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    @Override
-    public String toString() {
-        return "Topic{" +
-                "name='" + name + '\'' +
-                '}';
-    }
 }

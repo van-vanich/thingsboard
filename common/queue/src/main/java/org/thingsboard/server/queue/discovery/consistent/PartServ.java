@@ -5,5 +5,5 @@ import java.util.Map;
 
 public interface PartServ {
     // topic == data
-    Map<org.algo.Topic, org.algo.Node> resolvePart(List<org.algo.Node> nodes, List<org.algo.Topic> topics);
+    Map<Topic, Node> resolvePart(List<Node> nodes, List<Topic> topics);
 }
