@@ -1,11 +1,14 @@
 package org.thingsboard.server.queue.discovery.consistent;
 
+import lombok.extern.slf4j.Slf4j;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentSkipListMap;
 
+@Slf4j
 public class SolvePartServ implements PartServ{
 
     private ConcurrentSkipListMap<Integer, org.algo.VNode> vNodeHash;
@@ -33,7 +36,7 @@ public class SolvePartServ implements PartServ{
 
             org.algo.VNode vNode = addTopic(topic);
             System.out.println(vNode.getNode().getName());
-
+            log.error("lkjhbkjhbjkh");
             answer.put(topic, vNode.getNode());
             System.out.println(topic + " => " + vNode.getNode());
         }
