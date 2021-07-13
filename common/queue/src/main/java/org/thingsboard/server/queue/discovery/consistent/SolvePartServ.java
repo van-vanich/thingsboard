@@ -70,7 +70,8 @@ public class SolvePartServ implements PartServ {
     }
 
     int getCeil(int cntClient, int cntNode) {
-        if (cntNode == 0) return 0;
+
+        if (cntClient <= 0 || cntNode <= 0) return -1;
         return (cntClient / cntNode) + ((cntClient % cntNode != 0) ? 1 : 0);
     }
 
