@@ -5,6 +5,7 @@ import com.google.common.hash.Hashing;
 import lombok.extern.slf4j.Slf4j;
 
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.ConcurrentNavigableMap;
 import java.util.concurrent.ConcurrentSkipListMap;
@@ -16,20 +17,19 @@ public class SolvePartServ implements PartServ {
     private List<Node> allNode = new ArrayList<>();
     private int cntClient = 0;
     private int cntNode = 0;
-    private final int SIZE_VNODE = 18;
+    private final int SIZE_VNODE = 150;
     private Map<Node, Integer> nowInBucket = new HashMap<>();
 
+
+    public int getSIZE_VNODE() {
+        return SIZE_VNODE;
+    }
+
+
     @Override
-    public Map<Topic, Node> resolvePart(List<Node> inputNodes, List<Topic> inputTopics) {
+    public Map<Topic, Node> resolvePart(List<Node> nodes, List<Topic> topics) {
 
         HashMap<Topic, Node> answer = new HashMap<>();
-
-        ArrayList<Node> nodes = new ArrayList<>();
-        if (inputNodes instanceof LinkedList) nodes.addAll(inputNodes); else nodes = (ArrayList<Node>) inputNodes;
-
-
-        ArrayList<Topic> topics = new ArrayList<>();
-        if (inputTopics instanceof LinkedList) topics.addAll(inputTopics); else topics = (ArrayList<Topic>) inputTopics;
 
         this.cntClient = topics.size();
         this.cntNode = nodes.size();
@@ -40,7 +40,6 @@ public class SolvePartServ implements PartServ {
             for (int i=0; i<SIZE_VNODE; i++) {
                 VNode vNode = new VNode(node, i);
                 final long hash = getHash(vNode);
-//                System.out.println(getHash(vNode));
 
                 vNodeHash.put(hash, vNode);
             }
@@ -56,7 +55,7 @@ public class SolvePartServ implements PartServ {
                 answer.put(topics.get(i), node);
         }
 
-        System.out.println("cnt Client = " + cntClient + ", cntNode = " + cntNode);
+        log.warn("cnt Client = " + cntClient + ", cntNode = " + cntNode);
         return answer;
 
     }
@@ -65,15 +64,16 @@ public class SolvePartServ implements PartServ {
     public Node addTopic(Topic topic, int ceil) {
 
         long hash = getHash(topic);
-       // System.out.println(topic.getName() + "," + hash + ",");
         return searchVNode(hash, ceil);
     }
+
 
     int getCeil(int cntClient, int cntNode) {
 
         if (cntClient <= 0 || cntNode <= 0) return -1;
         return (cntClient / cntNode) + ((cntClient % cntNode != 0) ? 1 : 0);
     }
+
 
     private Node searchVNode(long hash, int ceil) {
 
@@ -83,6 +83,7 @@ public class SolvePartServ implements PartServ {
         return node;
 
     }
+
 
     private Node searchVNode(long start, long finish, int ceil) {
         ConcurrentNavigableMap<Long, VNode> sublist = vNodeHash.subMap(start, true, finish, true);
@@ -97,26 +98,19 @@ public class SolvePartServ implements PartServ {
     }
 
 
-    private long getHash(Topic topic) {
+    public long getHash(Topic topic) {
         return getHash("topic_" + topic.getName());
     }
-//
-//    private long getHash(Node node) {
-//        return getHash("node-" + node.getName());
-//    }
 
-    private long getHash(VNode vNode) {
+
+    public long getHash(VNode vNode) {
         return getHash("" + (vNode.getId() * 47 + Short.MAX_VALUE) + "=VN=" + vNode.getNode().getName());
     }
 
+
     private long getHash(Object object) {
         HashFunction hashFunction = Hashing.sha256();
-        long hash = hashFunction.newHasher().putBytes(object.toString().getBytes(Charset.forName("UTF-8"))).hash().asLong();
-//        while (hash < 0) {
-//            hash += Integer.MAX_VALUE;
-//        }
-
-//        System.out.println(object.toString() + "," + hash + ",");
+        long hash = hashFunction.newHasher().putBytes(object.toString().getBytes(StandardCharsets.UTF_8)).hash().asLong();
 
         return hash;
     }
