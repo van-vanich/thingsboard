@@ -13,241 +13,16 @@ import static org.junit.Assert.assertThat;
 @Slf4j
 public class SolvePartServTest {
 
-//    public static final String TOPIC = "topic";
-//    private String alphabet = "qwertyuiopasdfghjklzxcvbnm";
-//
-//    private SolvePartServ loadBalancer = new SolvePartServ();
-//
-//    @Test
-//    public void oneNode(){
-//        List<Node> nodes = new ArrayList<>();
-//        List<Topic> topics = generateTopics(10);
-//        nodes.add(new Node("node1 "));
-//
-//
-//        HashMap<Topic, Node> answer = (HashMap<Topic, Node>) loadBalancer.resolvePart(nodes, topics);
-//        int floor = topics.size() / nodes.size();
-//        int ceil = topics.size() / nodes.size() + ((topics.size() % nodes.size() != 0) ? 1 : 0);
-////        assertEquals(true, checkAnswer(answer, floor, ceil));
-//
-//    }
-//
-//    private List<Topic> generateTopics(int max) {
-//        List<Topic> topics = new ArrayList<>(max);
-//        for (int i=0; i<max; i++) {
-//            topics.add(new Topic(TOPIC + i));
-//        }
-//        return topics;
-//    }
-//
-//    @Test
-//    public void nodesInOneLine(){
-//        List<Node> nodes = new ArrayList<>();
-//        List<Topic> topics = new ArrayList<>();
-//
-//        String[] name = {"a", "b", "c", "d", "e", "f", "g", "h", "i", "j"};
-//        for (int i=0; i<10; i++) {
-//            topics.add(new Topic(name[i]));
-//        }
-//
-//        HashMap<Topic, Node> last = new HashMap<>();
-//        for (int i=0; i<10; i++) {
-//            System.out.println("-------------------------------------");
-//            System.out.println(i);
-//            nodes.add(new Node("node" + i));
-//            HashMap<Topic, Node> answer = (HashMap<Topic, Node>) loadBalancer.resolvePart(nodes, topics);
-//            if (i > 0) System.out.println("replace == " + countDifferentState(last, answer));
-//            last = answer;
-//            int floor = topics.size() / nodes.size();
-//            int ceil = topics.size() / nodes.size() + ((topics.size() % nodes.size() != 0) ? 1 : 0);
-////            assertEquals(true, checkAnswer(answer, floor, ceil));
-////
-//        }
-//    }
-//
-//    @Test
-//    public void addNodes(){
-//        List<Node> nodes = new ArrayList<>();
-//        List<Topic> topics = new ArrayList<>();
-//
-//
-//        String[] name = {"one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"};
-//        for (int i=0; i<10; i++) {
-//            topics.add(new Topic(name[i]));
-//        }
-//
-//        HashMap<Topic, Node> last = new HashMap<>();
-//        for (int i=0; i<10; i++) {
-//            System.out.println("-------------------------------------");
-//            System.out.println(i);
-//            nodes.add(new Node("node" + i));
-//            HashMap<Topic, Node> answer = (HashMap<Topic, Node>) loadBalancer.resolvePart(nodes, topics);
-//            if (i > 0) System.out.println("replace == " + countDifferentState(last, answer));
-//            last = answer;
-//            int floor = topics.size() / nodes.size();
-//            int ceil = topics.size() / nodes.size() + ((topics.size() % nodes.size() != 0) ? 1 : 0);
-////            assertEquals(true, checkAnswer(answer, floor, ceil));
-////
-//        }
-//    }
-//
-//    @Test
-//    public void deleteNodes() {
-//        List<Node> nodes = new ArrayList<>();
-//        List<Topic> topics = new ArrayList<>();
-//
-//        String[] name = {"one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"};
-//        for (int i=0; i<10; i++) {
-//            topics.add(new Topic(name[i]));
-//        }
-//
-//        HashMap<Topic, Node> last = new HashMap<>();
-//        for (int i=0; i<5; i++) {
-//            System.out.println("-------------------------------------");
-//            System.out.println(i);
-//            nodes.add(new Node("node" + i));
-//            HashMap<Topic, Node> answer = (HashMap<Topic, Node>) loadBalancer.resolvePart(nodes, topics);
-//            if (i > 0) System.out.println("replace == " + countDifferentState(last, answer));
-//            last = answer;
-//            int floor = topics.size() / nodes.size();
-//            int ceil = topics.size() / nodes.size() + ((topics.size() % nodes.size() != 0) ? 1 : 0);
-////            assertEquals(true, checkAnswer(answer, floor, ceil));
-////
-//        }
-//
-//        System.out.println("@!$!#$%!%^!@#$^@#$^ $% Y^");
-//
-//        for (int i=0; i<4; i++) {
-//            System.out.println("-------------------------------------");
-////            System.out.println(i);
-//            nodes.remove(4 - i);
-//            HashMap<Topic, Node> answer = (HashMap<Topic, Node>) loadBalancer.resolvePart(nodes, topics);
-//            System.out.println("replace == " + countDifferentState(last, answer));
-//            last = answer;
-//            int floor = topics.size() / nodes.size();
-//            int ceil = topics.size() / nodes.size() + ((topics.size() % nodes.size() != 0) ? 1 : 0);
-////            assertEquals(true, checkAnswer(answer, floor, ceil));
-////
-//        }
-//    }
-//
-//    @Test
-//    public void deleteNodesOrderByAdd() {
-//        List<Node> nodes = new ArrayList<>();
-//        List<Topic> topics = new ArrayList<>();
-//
-//        String[] name = {"one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"};
-//        for (int i=0; i<10; i++) {
-//            topics.add(new Topic(name[i]));
-//        }
-//
-//        HashMap<Topic, Node> last = new HashMap<>();
-//        for (int i=0; i<5; i++) {
-//            System.out.println("-------------------------------------");
-//            System.out.println(i);
-//            nodes.add(new Node("node" + i));
-//            HashMap<Topic, Node> answer = (HashMap<Topic, Node>) loadBalancer.resolvePart(nodes, topics);
-//            if (i > 0) System.out.println("replace == " + countDifferentState(last, answer));
-//            last = answer;
-//            int floor = topics.size() / nodes.size();
-//            int ceil = topics.size() / nodes.size() + ((topics.size() % nodes.size() != 0) ? 1 : 0);
-////            assertEquals(true, checkAnswer(answer, floor, ceil));
-////
-//        }
-//
-//        System.out.println("@!$!#$%!%^!@#$^@#$^ $% Y^");
-//
-//        for (int i=0; i<4; i++) {
-//            System.out.println("-------------------------------------");
-////            System.out.println(i);
-//            nodes.remove(0);
-//            HashMap<Topic, Node> answer = (HashMap<Topic, Node>) loadBalancer.resolvePart(nodes, topics);
-//            System.out.println("replace == " + countDifferentState(last, answer));
-//            last = answer;
-//            int floor = topics.size() / nodes.size();
-//            int ceil = topics.size() / nodes.size() + ((topics.size() % nodes.size() != 0) ? 1 : 0);
-////            assertEquals(true, checkAnswer(answer, floor, ceil));
-////
-//        }
-//    }
-//
-//    @Test
-//    public void createTopicFor4Node() {
-//
-//        List<Node> nodes = new ArrayList<>();
-//        List<Topic> topics = new ArrayList<>();
-//
-//        HashMap<Topic, Node> last = new HashMap<>();
-//
-//        for (int i=0; i<4; i++) {
-//            System.out.println("-------------------------------------");
-////            System.out.println(i);
-//            nodes.add(new Node("node " + i));
-//            HashMap<Topic, Node> answer = (HashMap<Topic, Node>) loadBalancer.resolvePart(nodes, topics);
-//            //System.out.println(checkAnswer(last, answer, topics));
-//            last = answer;
-//            int floor = topics.size() / nodes.size();
-//            int ceil = topics.size() / nodes.size() + ((topics.size() % nodes.size() != 0) ? 1 : 0);
-////            assertEquals(true, checkAnswer(answer, floor, ceil));
-////
-//        }
-//
-//        String[] name = {"qaqa", "wawa", "eaea", "rara", "tata", "yaya", "uaua", "iaia", "oaoa", "papa", "sasa", "dada",
-//                        "fafa", "gaga", "haha", "jaja", "kaka", "lala", "zaza", "xaxa", "caca", "vava", "baba", "nana", "mama"};
-//        for (int i=0; i<25; i++) {
-//            topics.add(new Topic(name[i]));
-//            HashMap<Topic, Node> answer = (HashMap<Topic, Node>) loadBalancer.resolvePart(nodes, topics);
-//            System.out.println("replace == " + countDifferentState(last, answer));
-//            last = answer;
-//        }
-//
-//    }
-//
-//    @Test
-//    public void deleteNodeWhen100Topic() {
-//        List<Node> nodes = new ArrayList<>();
-//        List<Topic> topics = new ArrayList<>();
-//
-//        HashMap<Topic, Node> last = new HashMap<>();
-//
-//        for (int i=0; i<100; i++) {
-//            String name = "";
-//            for (int j=0; j<7; j++) {
-//                name += alphabet.charAt((int) Math.random() * 26);
-//            }
-//            topics.add(new Topic(name));
-//        }
-//
-//
-//        for (int i=0; i<10; i++) {
-//            System.out.println("-------------------------------------");
-////            System.out.println(i);
-//            nodes.add(new Node("node " + i));
-//            HashMap<Topic, Node> answer = (HashMap<Topic, Node>) loadBalancer.resolvePart(nodes, topics);
-//            System.out.println("replace == " + countDifferentState(last, answer));
-//            last = answer;
-////            assertEquals(true, checkAnswer(answer, floor, ceil));
-////
-//        }
-//
-//
-//        last = new HashMap<>();
-//
-//        for (int i=0; i<9; i++) {
-//            nodes.remove(nodes.size() - 1);
-//            HashMap<Topic, Node> answer = (HashMap<Topic, Node>) loadBalancer.resolvePart(nodes, topics);
-//            System.out.println("replace == " + countDifferentState(last, answer));
-//            last = answer;
-//
-//        }
-//    }
 
     private int countDifferentState(HashMap<Topic, Node> pastState, HashMap<Topic, Node> presentState) {
         assertEquals("Maps size different", pastState.size(), presentState.size());
         int diff = 0;
 
         for (Map.Entry<Topic, Node> entry : pastState.entrySet()) {
-            if (!entry.getValue().equals(presentState.get(entry.getKey()))) diff++;
+            if (!entry.getValue().equals(presentState.get(entry.getKey()))) {
+                diff++;
+//                log.warn("past Node = {} , present Node = {}" , entry.getValue(), presentState.get(entry.getKey()));
+            }
         }
 
 //        System.out.println("!" + diff);
@@ -269,7 +44,7 @@ public class SolvePartServTest {
 
 
     public Map<Topic, Node> testResolvePart(int topicsCount, int nodesCount) {
-        log.warn("topicCount {} nodesCount {}", topicsCount, nodesCount);
+//        log.warn("topicCount {} nodesCount {}", topicsCount, nodesCount);
         List<Topic> topics = new ArrayList<>();
         List<Node> nodes = new ArrayList<>();
 
@@ -283,7 +58,11 @@ public class SolvePartServTest {
 
         SolvePartServ service = new SolvePartServ();
         Map<Topic, Node> solution = service.resolvePart(nodes, topics);
-        solution.forEach((topic, node) -> log.warn("topic {} node {}", topic, node));
+//        solution.forEach((topic, node) -> log.warn("topic {} node {}", topic, node));
+        int optimalReplaceFloor = topicsCount / nodesCount;
+        int optimalReplaceCeil = topicsCount / nodesCount + (topicsCount % nodesCount > 0 ? 1 : 0);
+
+//        log.warn("optimal replace is {},{}", optimalReplaceFloor, optimalReplaceCeil);
         return solution;
     }
 
@@ -292,8 +71,24 @@ public class SolvePartServTest {
         testResolvePart(6,6);
         testResolvePart(6,3);
         testResolvePart(5,3);
+
+
         countDifferentState((HashMap<Topic, Node>) testResolvePart(6, 3),(HashMap<Topic, Node>) testResolvePart(6, 2));
-        countDifferentState((HashMap<Topic, Node>) testResolvePart(30, 5),(HashMap<Topic, Node>) testResolvePart(30, 6));
+        log.warn("optimal replace is 2 topics");
+
+
+        countDifferentState((HashMap<Topic, Node>) testResolvePart(30, 6),(HashMap<Topic, Node>) testResolvePart(30, 5));
+        log.warn("optimal replace is 5 topics");
+
+        countDifferentState((HashMap<Topic, Node>) testResolvePart(100, 10),(HashMap<Topic, Node>) testResolvePart(100, 9));
+        log.warn("optimal replace is 10 topics");
+
+
+        countDifferentState((HashMap<Topic, Node>) testResolvePart(100, 9),(HashMap<Topic, Node>) testResolvePart(100, 8));
+        log.warn("optimal replace is 11-12 topics");
+
+//        countDifferentState((HashMap<Topic, Node>) testResolvePart(100000, 10),(HashMap<Topic, Node>) testResolvePart(100000, 9));
+//        log.warn("optimal replace is 10000 topics");
 
     }
 
