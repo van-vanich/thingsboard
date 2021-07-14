@@ -4,40 +4,56 @@ import com.google.common.hash.HashFunction;
 import com.google.common.hash.Hashing;
 import lombok.extern.slf4j.Slf4j;
 
-import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentNavigableMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 
 @Slf4j
-public class SolvePartServ implements PartServ {
+public class SolvePartServ implements PartitionService {
 
     private ConcurrentSkipListMap<Long, VNode> vNodeHash;
-    private List<Node> allNode = new ArrayList<>();
-    private int cntClient = 0;
-    private int cntNode = 0;
-    private final int SIZE_VNODE = 150;
+    private int countClient = 0;
+    private int countNode = 0;
+    private final int COPY_VNODE = 200;
     private Map<Node, Integer> nowInBucket = new HashMap<>();
 
 
-    public int getSIZE_VNODE() {
-        return SIZE_VNODE;
+    public int getCOPY_VNODE() {
+        return COPY_VNODE;
     }
 
 
     @Override
-    public Map<Topic, Node> resolvePart(List<Node> nodes, List<Topic> topics) {
+    public Map<Topic, Node> balancePartitionService(List<Node> nodes, List<Topic> topics) {
 
-        HashMap<Topic, Node> answer = new HashMap<>();
 
-        this.cntClient = topics.size();
-        this.cntNode = nodes.size();
+        setCountTopicAndNode(topics.size(), nodes.size());
+
+        createVirtualNodes(nodes);
+
+        Map<Topic, Node> answer = searchVNodesForTopics(topics);
+
+
+        log.warn("cnt Client = " + countClient + ", cntNode = " + countNode);
+        return answer;
+
+    }
+
+    private void setCountTopicAndNode(int countTopic, int countNode) {
+        this.countClient = countTopic;
+        this.countNode = countNode;
+    }
+
+    private void createVirtualNodes(List<Node> nodes) {
 
         vNodeHash = new ConcurrentSkipListMap<>();
 
         for (Node node : nodes) {
-            for (int i=0; i<SIZE_VNODE; i++) {
+            for (int i = 0; i< COPY_VNODE; i++) {
                 VNode vNode = new VNode(node, i);
                 final long hash = getHash(vNode);
 
@@ -45,26 +61,25 @@ public class SolvePartServ implements PartServ {
             }
             nowInBucket.put(node, 0);
         }
-
-
-        int floor = topics.size() / nodes.size();
-        int ceil = getCeil(cntClient, cntNode);
-        for (int i=0; i<topics.size(); i++) {
-
-                Node node = addTopic(topics.get(i), i < floor * nodes.size() ? floor : ceil);
-                answer.put(topics.get(i), node);
-        }
-
-        log.warn("cnt Client = " + cntClient + ", cntNode = " + cntNode);
-        return answer;
-
     }
 
+    private Map<Topic, Node> searchVNodesForTopics(List<Topic> topics) {
+        Map<Topic, Node> answer = new HashMap<>();
+        int floor = countClient / countNode;
+        int ceil = getCeil(countClient, countNode);
+        for (int i=0; i<topics.size(); i++) {
 
-    public Node addTopic(Topic topic, int ceil) {
+            Node node = addTopic(topics.get(i), i < floor * countNode ? floor : ceil);
+            answer.put(topics.get(i), node);
+        }
+
+        return answer;
+    }
+
+    public Node addTopic(Topic topic, int limitTopicInNode) {
 
         long hash = getHash(topic);
-        return searchVNode(hash, ceil);
+        return searchVNode(hash, limitTopicInNode);
     }
 
 
@@ -75,21 +90,20 @@ public class SolvePartServ implements PartServ {
     }
 
 
-    private Node searchVNode(long hash, int ceil) {
+    private Node searchVNode(long hash, int limitTopicInNode) {
 
-        Node node = searchVNode(hash, Long.MAX_VALUE, ceil);
-        if (node == null) node = searchVNode(Long.MIN_VALUE, hash - 1, ceil);
+        Node node = searchVNode(hash, Long.MAX_VALUE, limitTopicInNode);
+        if (node == null) node = searchVNode(Long.MIN_VALUE, hash - 1, limitTopicInNode);
         Objects.requireNonNull(node, "No solution found");
         return node;
-
     }
 
 
-    private Node searchVNode(long start, long finish, int ceil) {
+    private Node searchVNode(long start, long finish, int limitTopicInNode) {
         ConcurrentNavigableMap<Long, VNode> sublist = vNodeHash.subMap(start, true, finish, true);
         for (Map.Entry<Long, VNode> entry : sublist.entrySet()) {
             Node node = entry.getValue().getNode();
-            if (nowInBucket.get(node) < ceil) {
+            if (nowInBucket.get(node) < limitTopicInNode) {
                 nowInBucket.put(node, nowInBucket.get(node) + 1);
                 return node;
             }

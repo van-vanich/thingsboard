@@ -13,7 +13,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 @Slf4j
-public class SolvePartServTest {
+public class SolvePartitionServiseTest {
     private SolvePartServ resolver;
 
     @Before
@@ -67,10 +67,10 @@ public class SolvePartServTest {
             nodes.add(new Node("node" + i));
         }
 
-        Map<Topic, Node> solution = resolver.resolvePart(nodes, topics);
+        Map<Topic, Node> solution = resolver.balancePartitionService(nodes, topics);
 
         checkBalanced(solution, topicsCount, nodes);
-        checkVirtualNodesBetweenTopics(nodes, topics, resolver.getSIZE_VNODE());
+        checkVirtualNodesBetweenTopics(nodes, topics, resolver.getCOPY_VNODE());
 
         return solution;
     }
@@ -107,13 +107,10 @@ public class SolvePartServTest {
             topicsHash.add(resolver.getHash(topic));
         }
 
-        topicsHash.sort(new Comparator<Long>() {
-            @Override
-            public int compare(Long aLong, Long t1) {
-                if (aLong < t1) return -1;
-                if (aLong == t1) return 0;
-                return 1;
-            }
+        topicsHash.sort((aLong, t1) -> {
+            if (aLong < t1) return -1;
+            if (aLong == t1) return 0;
+            return 1;
         });
 
         for (Long hash: topicsHash) {
@@ -129,7 +126,7 @@ public class SolvePartServTest {
                 nodeBetweenTopics.add(entry.getValue().getNode());
             }
             log.warn("nodes between topics = {}, need = {}" , nodeBetweenTopics.size(), nodes.size());
-            assertTrue( nodeBetweenTopics.size() + (nodes.size() / 5) >= nodes.size());
+            assertTrue( nodeBetweenTopics.size() + (nodes.size() / 2) >= nodes.size());
         }
     }
 
@@ -169,17 +166,17 @@ public class SolvePartServTest {
         }
 
 
-        Map<Topic, Node> pastState = resolver.resolvePart(nodes, topics);
+        Map<Topic, Node> pastState = resolver.balancePartitionService(nodes, topics);
         checkBalanced(pastState, topics.size(), nodes);
-        checkVirtualNodesBetweenTopics(nodes, topics, resolver.getSIZE_VNODE());
+        checkVirtualNodesBetweenTopics(nodes, topics, resolver.getCOPY_VNODE());
 
         nodes.remove(4);
         nodes.remove(1);
 
-        Map<Topic, Node> presentState = resolver.resolvePart(nodes, topics);
+        Map<Topic, Node> presentState = resolver.balancePartitionService(nodes, topics);
         countDifferentState(pastState, presentState, nodes.size() + 2, nodes.size());
         checkBalanced(presentState, topics.size(), nodes);
-        checkVirtualNodesBetweenTopics(nodes, topics, resolver.getSIZE_VNODE());
+        checkVirtualNodesBetweenTopics(nodes, topics, resolver.getCOPY_VNODE());
     }
 
     @Test
@@ -195,9 +192,9 @@ public class SolvePartServTest {
             nodes.add(new Node("node" + i));
         }
 
-        Map<Topic, Node> state = resolver.resolvePart(nodes, topics);
+        Map<Topic, Node> state = resolver.balancePartitionService(nodes, topics);
         checkBalanced(state, topics.size(), nodes);
-        checkVirtualNodesBetweenTopics(nodes, topics, resolver.getSIZE_VNODE());
+        checkVirtualNodesBetweenTopics(nodes, topics, resolver.getCOPY_VNODE());
     }
 
     @Test
@@ -214,18 +211,18 @@ public class SolvePartServTest {
         }
 
 
-        Map<Topic, Node> pastState = resolver.resolvePart(nodes, topics);
+        Map<Topic, Node> pastState = resolver.balancePartitionService(nodes, topics);
         checkBalanced(pastState, topics.size(), nodes);
-        checkVirtualNodesBetweenTopics(nodes, topics, resolver.getSIZE_VNODE());
+        checkVirtualNodesBetweenTopics(nodes, topics, resolver.getCOPY_VNODE());
 
         for (int i=0; i<6; i++) {
             Node nodeRemoved = nodes.get(i);
             nodes.remove(i);
-            Map<Topic, Node> presentState = resolver.resolvePart(nodes, topics);
+            Map<Topic, Node> presentState = resolver.balancePartitionService(nodes, topics);
 
             countDifferentState(pastState, presentState, nodes.size() + 1, nodes.size());
             checkBalanced(presentState, topics.size(), nodes);
-            checkVirtualNodesBetweenTopics(nodes, topics, resolver.getSIZE_VNODE());
+            checkVirtualNodesBetweenTopics(nodes, topics, resolver.getCOPY_VNODE());
 
             pastState = presentState;
             nodes.add(i, nodeRemoved);
@@ -245,18 +242,18 @@ public class SolvePartServTest {
             nodes.add(new Node("node" + i));
         }
 
-        Map<Topic, Node> pastState = resolver.resolvePart(nodes, topics);
+        Map<Topic, Node> pastState = resolver.balancePartitionService(nodes, topics);
         checkBalanced(pastState, topics.size(), nodes);
-        checkVirtualNodesBetweenTopics(nodes, topics, resolver.getSIZE_VNODE());
+        checkVirtualNodesBetweenTopics(nodes, topics, resolver.getCOPY_VNODE());
 
         for (int i = 0; i < 10; i++) {
             nodes.remove(i);
         }
 
-        Map<Topic, Node> presentState = resolver.resolvePart(nodes, topics);
+        Map<Topic, Node> presentState = resolver.balancePartitionService(nodes, topics);
         checkBalanced(presentState, topics.size(), nodes);
         countDifferentState(pastState, presentState, nodes.size() + 10, nodes.size());
-        checkVirtualNodesBetweenTopics(nodes, topics, resolver.getSIZE_VNODE());
+        checkVirtualNodesBetweenTopics(nodes, topics, resolver.getCOPY_VNODE());
     }
 
     @Test
@@ -272,18 +269,18 @@ public class SolvePartServTest {
             nodes.add(new Node("node" + i));
         }
 
-        Map<Topic, Node> pastState = resolver.resolvePart(nodes, topics);
+        Map<Topic, Node> pastState = resolver.balancePartitionService(nodes, topics);
         checkBalanced(pastState, topics.size(), nodes);
-        checkVirtualNodesBetweenTopics(nodes, topics, resolver.getSIZE_VNODE());
+        checkVirtualNodesBetweenTopics(nodes, topics, resolver.getCOPY_VNODE());
 
         for (int i = 0; i < 15; i++) {
             nodes.remove(nodes.size() - 1);
         }
 
-        Map<Topic, Node> presentState = resolver.resolvePart(nodes, topics);
+        Map<Topic, Node> presentState = resolver.balancePartitionService(nodes, topics);
         checkBalanced(presentState, topics.size(), nodes);
         countDifferentState(pastState, presentState, 20, 5);
-        checkVirtualNodesBetweenTopics(nodes, topics, resolver.getSIZE_VNODE());
+        checkVirtualNodesBetweenTopics(nodes, topics, resolver.getCOPY_VNODE());
 
     }
 
