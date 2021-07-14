@@ -8,12 +8,13 @@ import org.junit.Test;
 import java.util.*;
 import java.util.concurrent.ConcurrentNavigableMap;
 import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.regex.Pattern;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 @Slf4j
-public class SolvePartitionServiseTest {
+public class SolvePartitionServiceTest {
     private SolvePartServ resolver;
 
     @Before
@@ -56,12 +57,8 @@ public class SolvePartitionServiseTest {
     }
 
     public Map<Topic, Node> testResolvePart(int topicsCount, int nodesCount) {
-        List<Topic> topics = new ArrayList<>();
-        List<Node> nodes = new ArrayList<>();
-
-        for (int i = 0; i < topicsCount; i++) {
-            topics.add(new Topic("topic" + i));
-        }
+        List<Topic> topics = topicsList(topicsCount);
+        List<Node> nodes = nodesList(nodesCount);
 
         for (int i = 0; i < nodesCount; i++) {
             nodes.add(new Node("node" + i));
@@ -73,6 +70,23 @@ public class SolvePartitionServiseTest {
         checkVirtualNodesBetweenTopics(nodes, topics, resolver.getCOPY_VNODE());
 
         return solution;
+    }
+
+    private List<Topic> topicsList(int count) {
+        List<Topic> answer = new ArrayList<>();
+        for (int i = 0; i < count; i++) {
+            answer.add(new Topic("topic" + i));
+        }
+        return answer;
+    }
+
+    private List<Node> nodesList(int count) {
+
+        List<Node> answer = new ArrayList<>();
+        for (int i = 0; i < count; i++) {
+            answer.add(new Node("node" + i));
+        }
+        return answer;
     }
 
     void checkBalanced(Map<Topic, Node> solution, int topicsCount, List<Node> nodes) {
@@ -92,17 +106,25 @@ public class SolvePartitionServiseTest {
 
     void checkVirtualNodesBetweenTopics(List<Node> nodes, List<Topic> topics, int SIZE_VNODE) {
 
-        ConcurrentSkipListMap<Long, VNode> vNodeHash = new ConcurrentSkipListMap<>();
-        ArrayList<Long> topicsHash = new ArrayList<>();
-        for (Node node : nodes) {
-            for (int i=0; i<SIZE_VNODE; i++) {
-                VNode vNode = new VNode(node, i);
-                final long hash = resolver.getHash(vNode);
+        ConcurrentSkipListMap<Long, VNode> vNodeHash = resolver.createVirtualNodes(nodes);
 
-                vNodeHash.put(hash, vNode);
+        List<Long> topicsHash = getTopicHash(topics);
+
+        for (int i=1; i<topicsHash.size(); i++) {
+            long startHash = topicsHash.get(i - 1);
+            long finishHash = topicsHash.get(i);
+            ConcurrentNavigableMap<Long, VNode> sublist = vNodeHash.subMap(startHash, true, finishHash, true);
+            HashSet<Node> nodeBetweenTopics = new HashSet<>();
+            for (Map.Entry<Long, VNode> entry: sublist.entrySet()) {
+                nodeBetweenTopics.add(entry.getValue().getNode());
             }
+            log.warn("nodes between topics = {}, need = {}" , nodeBetweenTopics.size(), nodes.size());
+            assertTrue( nodeBetweenTopics.size() + (nodes.size() / 2) >= nodes.size());
         }
+    }
 
+    public List<Long> getTopicHash(List<Topic> topics) {
+        List<Long> topicsHash = new ArrayList<>();
         for (Topic topic: topics) {
             topicsHash.add(resolver.getHash(topic));
         }
@@ -116,18 +138,7 @@ public class SolvePartitionServiseTest {
         for (Long hash: topicsHash) {
             System.out.println(hash);
         }
-
-        for (int i=1; i<topicsHash.size(); i++) {
-            long startHash = topicsHash.get(i - 1);
-            long finishHash = topicsHash.get(i);
-            ConcurrentNavigableMap<Long, VNode> sublist = vNodeHash.subMap(startHash, true, finishHash, true);
-            HashSet<Node> nodeBetweenTopics = new HashSet<>();
-            for (Map.Entry<Long, VNode> entry: sublist.entrySet()) {
-                nodeBetweenTopics.add(entry.getValue().getNode());
-            }
-            log.warn("nodes between topics = {}, need = {}" , nodeBetweenTopics.size(), nodes.size());
-            assertTrue( nodeBetweenTopics.size() + (nodes.size() / 2) >= nodes.size());
-        }
+        return topicsHash;
     }
 
     @Test
@@ -154,16 +165,9 @@ public class SolvePartitionServiseTest {
 
     @Test
     public void deleteTwoNodes() {
-        List<Topic> topics = new ArrayList<>();
-        List<Node> nodes = new ArrayList<>();
 
-        for (int i = 0; i < 6; i++) {
-            topics.add(new Topic("topic" + i));
-        }
-
-        for (int i = 0; i < 6; i++) {
-            nodes.add(new Node("node" + i));
-        }
+        List<Topic> topics = topicsList(6);
+        List<Node> nodes = nodesList(6);
 
 
         Map<Topic, Node> pastState = resolver.balancePartitionService(nodes, topics);
@@ -181,16 +185,9 @@ public class SolvePartitionServiseTest {
 
     @Test
     public void fourTopicsThreeNodes() {
-        List<Topic> topics = new ArrayList<>();
-        List<Node> nodes = new ArrayList<>();
 
-        for (int i = 0; i < 4; i++) {
-            topics.add(new Topic("topic" + i));
-        }
-
-        for (int i = 0; i < 3; i++) {
-            nodes.add(new Node("node" + i));
-        }
+        List<Topic> topics = topicsList(4);
+        List<Node> nodes = nodesList(3);
 
         Map<Topic, Node> state = resolver.balancePartitionService(nodes, topics);
         checkBalanced(state, topics.size(), nodes);
@@ -199,17 +196,9 @@ public class SolvePartitionServiseTest {
 
     @Test
     public void sixTopicSixNodeUpdate() {
-        List<Topic> topics = new ArrayList<>();
-        List<Node> nodes = new ArrayList<>();
 
-        for (int i = 0; i < 6; i++) {
-            topics.add(new Topic("topic" + i));
-        }
-
-        for (int i = 0; i < 6; i++) {
-            nodes.add(new Node("node" + i));
-        }
-
+        List<Topic> topics = topicsList(6);
+        List<Node> nodes = nodesList(6);
 
         Map<Topic, Node> pastState = resolver.balancePartitionService(nodes, topics);
         checkBalanced(pastState, topics.size(), nodes);
@@ -231,16 +220,9 @@ public class SolvePartitionServiseTest {
 
     @Test
     public void turnOffAllOddNodes() {
-        List<Topic> topics = new ArrayList<>();
-        List<Node> nodes = new ArrayList<>();
 
-        for (int i = 0; i < 25; i++) {
-            topics.add(new Topic("topic" + i));
-        }
-
-        for (int i = 0; i < 20; i++) {
-            nodes.add(new Node("node" + i));
-        }
+        List<Topic> topics = topicsList(25);
+        List<Node> nodes = nodesList(20);
 
         Map<Topic, Node> pastState = resolver.balancePartitionService(nodes, topics);
         checkBalanced(pastState, topics.size(), nodes);
@@ -258,16 +240,9 @@ public class SolvePartitionServiseTest {
 
     @Test
     public void twentyNodeToFiveNode() {
-        List<Topic> topics = new ArrayList<>();
-        List<Node> nodes = new ArrayList<>();
 
-        for (int i = 0; i < 20; i++) {
-            topics.add(new Topic("topic" + i));
-        }
-
-        for (int i = 0; i < 20; i++) {
-            nodes.add(new Node("node" + i));
-        }
+        List<Topic> topics = topicsList(20);
+        List<Node> nodes = nodesList(20);
 
         Map<Topic, Node> pastState = resolver.balancePartitionService(nodes, topics);
         checkBalanced(pastState, topics.size(), nodes);

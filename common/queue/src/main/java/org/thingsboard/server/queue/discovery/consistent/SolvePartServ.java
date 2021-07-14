@@ -15,11 +15,11 @@ import java.util.concurrent.ConcurrentSkipListMap;
 @Slf4j
 public class SolvePartServ implements PartitionService {
 
-    private ConcurrentSkipListMap<Long, VNode> vNodeHash;
+    private final int COPY_VNODE = 200;
     private int countClient = 0;
     private int countNode = 0;
-    private final int COPY_VNODE = 200;
     private Map<Node, Integer> nowInBucket = new HashMap<>();
+    private ConcurrentSkipListMap<Long, VNode> vNodeHash = new ConcurrentSkipListMap<>();
 
 
     public int getCOPY_VNODE() {
@@ -33,7 +33,7 @@ public class SolvePartServ implements PartitionService {
 
         setCountTopicAndNode(topics.size(), nodes.size());
 
-        createVirtualNodes(nodes);
+        vNodeHash = createVirtualNodes(nodes);
 
         Map<Topic, Node> answer = searchVNodesForTopics(topics);
 
@@ -48,10 +48,9 @@ public class SolvePartServ implements PartitionService {
         this.countNode = countNode;
     }
 
-    private void createVirtualNodes(List<Node> nodes) {
+    public ConcurrentSkipListMap<Long, VNode> createVirtualNodes(List<Node> nodes) {
 
-        vNodeHash = new ConcurrentSkipListMap<>();
-
+        ConcurrentSkipListMap<Long, VNode> vNodeHash = new ConcurrentSkipListMap<>();
         for (Node node : nodes) {
             for (int i = 0; i< COPY_VNODE; i++) {
                 VNode vNode = new VNode(node, i);
@@ -61,6 +60,7 @@ public class SolvePartServ implements PartitionService {
             }
             nowInBucket.put(node, 0);
         }
+        return vNodeHash;
     }
 
     private Map<Topic, Node> searchVNodesForTopics(List<Topic> topics) {
