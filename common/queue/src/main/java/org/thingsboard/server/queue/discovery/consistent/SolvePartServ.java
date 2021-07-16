@@ -15,20 +15,26 @@ import java.util.concurrent.ConcurrentSkipListMap;
 @Slf4j
 public class SolvePartServ implements PartitionService {
 
-    private final int COPY_VNODE = 200;
+    private final int COPY_VIRTUAL_NODE = 200;
     private int countTopic = 0;
     private int countNode = 0;
-    private Map<Node, Integer> nowInBucket = new HashMap<>();
+    private Map<Node, Integer> nowInBucket;
     private ConcurrentSkipListMap<Long, VirtualNode> virtualNodeHash = new ConcurrentSkipListMap<>();
 
+    public int getCOPY_VIRTUAL_NODE() {
+        return COPY_VIRTUAL_NODE;
+    }
 
     @Override
     public Map<Topic, Node> balancePartitionService(List<Node> nodes, List<Topic> topics) {
 
+        if (topics == null || nodes == null) return new HashMap<>();
+        if (topics.size() == 0 || nodes.size() == 0) return new HashMap<>();
 
         setCountTopicAndNode(topics.size(), nodes.size());
 
         virtualNodeHash = createVirtualNodes(nodes);
+
 
         Map<Topic, Node> answer = searchVirtualNodesForTopics(topics);
 
@@ -46,8 +52,9 @@ public class SolvePartServ implements PartitionService {
     public ConcurrentSkipListMap<Long, VirtualNode> createVirtualNodes(List<Node> nodes) {
 
         ConcurrentSkipListMap<Long, VirtualNode> vNodeHash = new ConcurrentSkipListMap<>();
+        nowInBucket = new HashMap<>(countNode);
         for (Node node : nodes) {
-            for (int i = 0; i < COPY_VNODE; i++) {
+            for (int i = 0; i < COPY_VIRTUAL_NODE; i++) {
                 VirtualNode virtualNode = new VirtualNode(node, i);
                 final long hash = getHash(virtualNode);
 
@@ -59,7 +66,7 @@ public class SolvePartServ implements PartitionService {
     }
 
     private Map<Topic, Node> searchVirtualNodesForTopics(List<Topic> topics) {
-        Map<Topic, Node> answer = new HashMap<>();
+        Map<Topic, Node> answer = new HashMap<>(topics.size());
         int floor = countTopic / countNode;
         int ceil = getCeil(countTopic, countNode);
         for (int i=0; i<topics.size(); i++) {
@@ -83,16 +90,16 @@ public class SolvePartServ implements PartitionService {
         return searchVirtualNode(hash, limitTopicInNode);
     }
 
-    public long getHash(Topic topic) {
+    long getHash(Topic topic) {
         return getHash("topic_" + topic.getName());
     }
 
-    public long getHash(VirtualNode virtualNode) {
+    long getHash(VirtualNode virtualNode) {
         return getHash("" + (virtualNode.getId() * 47 + Short.MAX_VALUE) + "=VN=" + virtualNode.getNode().getName());
     }
 
 
-    private long getHash(Object object) {
+    long getHash(Object object) {
         HashFunction hashFunction = Hashing.sha256();
         long hash = hashFunction.newHasher().putBytes(object.toString().getBytes(StandardCharsets.UTF_8)).hash().asLong();
         return hash;
