@@ -5,11 +5,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.junit.Test;
 
 @Slf4j
-public class VNodeTest {
+public class VirtualNodeTest {
 
     @Test
     public void name() {
-        VNode vNode = new VNode(new Node("node-1") , 1);
-        log.warn(vNode.toString());
+        VirtualNode virtualNode = new VirtualNode(new Node("node-1") , 1);
+        log.warn(virtualNode.toString());
     }
 }

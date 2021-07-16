@@ -16,15 +16,10 @@ import java.util.concurrent.ConcurrentSkipListMap;
 public class SolvePartServ implements PartitionService {
 
     private final int COPY_VNODE = 200;
-    private int countClient = 0;
+    private int countTopic = 0;
     private int countNode = 0;
     private Map<Node, Integer> nowInBucket = new HashMap<>();
-    private ConcurrentSkipListMap<Long, VNode> vNodeHash = new ConcurrentSkipListMap<>();
-
-
-    public int getCOPY_VNODE() {
-        return COPY_VNODE;
-    }
+    private ConcurrentSkipListMap<Long, VirtualNode> virtualNodeHash = new ConcurrentSkipListMap<>();
 
 
     @Override
@@ -33,40 +28,40 @@ public class SolvePartServ implements PartitionService {
 
         setCountTopicAndNode(topics.size(), nodes.size());
 
-        vNodeHash = createVirtualNodes(nodes);
+        virtualNodeHash = createVirtualNodes(nodes);
 
-        Map<Topic, Node> answer = searchVNodesForTopics(topics);
+        Map<Topic, Node> answer = searchVirtualNodesForTopics(topics);
 
 
-        log.warn("cnt Client = " + countClient + ", cntNode = " + countNode);
+        log.warn("cnt Client = " + countTopic + ", cntNode = " + countNode);
         return answer;
 
     }
 
     private void setCountTopicAndNode(int countTopic, int countNode) {
-        this.countClient = countTopic;
+        this.countTopic = countTopic;
         this.countNode = countNode;
     }
 
-    public ConcurrentSkipListMap<Long, VNode> createVirtualNodes(List<Node> nodes) {
+    public ConcurrentSkipListMap<Long, VirtualNode> createVirtualNodes(List<Node> nodes) {
 
-        ConcurrentSkipListMap<Long, VNode> vNodeHash = new ConcurrentSkipListMap<>();
+        ConcurrentSkipListMap<Long, VirtualNode> vNodeHash = new ConcurrentSkipListMap<>();
         for (Node node : nodes) {
-            for (int i = 0; i< COPY_VNODE; i++) {
-                VNode vNode = new VNode(node, i);
-                final long hash = getHash(vNode);
+            for (int i = 0; i < COPY_VNODE; i++) {
+                VirtualNode virtualNode = new VirtualNode(node, i);
+                final long hash = getHash(virtualNode);
 
-                vNodeHash.put(hash, vNode);
+                vNodeHash.put(hash, virtualNode);
             }
             nowInBucket.put(node, 0);
         }
         return vNodeHash;
     }
 
-    private Map<Topic, Node> searchVNodesForTopics(List<Topic> topics) {
+    private Map<Topic, Node> searchVirtualNodesForTopics(List<Topic> topics) {
         Map<Topic, Node> answer = new HashMap<>();
-        int floor = countClient / countNode;
-        int ceil = getCeil(countClient, countNode);
+        int floor = countTopic / countNode;
+        int ceil = getCeil(countTopic, countNode);
         for (int i=0; i<topics.size(); i++) {
 
             Node node = addTopic(topics.get(i), i < floor * countNode ? floor : ceil);
@@ -76,32 +71,45 @@ public class SolvePartServ implements PartitionService {
         return answer;
     }
 
-    public Node addTopic(Topic topic, int limitTopicInNode) {
-
-        long hash = getHash(topic);
-        return searchVNode(hash, limitTopicInNode);
-    }
-
-
     int getCeil(int cntClient, int cntNode) {
 
         if (cntClient <= 0 || cntNode <= 0) return -1;
         return (cntClient / cntNode) + ((cntClient % cntNode != 0) ? 1 : 0);
     }
 
+    public Node addTopic(Topic topic, int limitTopicInNode) {
 
-    private Node searchVNode(long hash, int limitTopicInNode) {
+        long hash = getHash(topic);
+        return searchVirtualNode(hash, limitTopicInNode);
+    }
 
-        Node node = searchVNode(hash, Long.MAX_VALUE, limitTopicInNode);
-        if (node == null) node = searchVNode(Long.MIN_VALUE, hash - 1, limitTopicInNode);
+    public long getHash(Topic topic) {
+        return getHash("topic_" + topic.getName());
+    }
+
+    public long getHash(VirtualNode virtualNode) {
+        return getHash("" + (virtualNode.getId() * 47 + Short.MAX_VALUE) + "=VN=" + virtualNode.getNode().getName());
+    }
+
+
+    private long getHash(Object object) {
+        HashFunction hashFunction = Hashing.sha256();
+        long hash = hashFunction.newHasher().putBytes(object.toString().getBytes(StandardCharsets.UTF_8)).hash().asLong();
+        return hash;
+    }
+
+    private Node searchVirtualNode(long hash, int limitTopicInNode) {
+
+        Node node = searchVirtualNode(hash, Long.MAX_VALUE, limitTopicInNode);
+        if (node == null) node = searchVirtualNode(Long.MIN_VALUE, hash - 1, limitTopicInNode);
         Objects.requireNonNull(node, "No solution found");
         return node;
     }
 
 
-    private Node searchVNode(long start, long finish, int limitTopicInNode) {
-        ConcurrentNavigableMap<Long, VNode> sublist = vNodeHash.subMap(start, true, finish, true);
-        for (Map.Entry<Long, VNode> entry : sublist.entrySet()) {
+    private Node searchVirtualNode(long start, long finish, int limitTopicInNode) {
+        ConcurrentNavigableMap<Long, VirtualNode> sublist = virtualNodeHash.subMap(start, true, finish, true);
+        for (Map.Entry<Long, VirtualNode> entry : sublist.entrySet()) {
             Node node = entry.getValue().getNode();
             if (nowInBucket.get(node) < limitTopicInNode) {
                 nowInBucket.put(node, nowInBucket.get(node) + 1);
@@ -111,22 +119,5 @@ public class SolvePartServ implements PartitionService {
         return null;
     }
 
-
-    public long getHash(Topic topic) {
-        return getHash("topic_" + topic.getName());
-    }
-
-
-    public long getHash(VNode vNode) {
-        return getHash("" + (vNode.getId() * 47 + Short.MAX_VALUE) + "=VN=" + vNode.getNode().getName());
-    }
-
-
-    private long getHash(Object object) {
-        HashFunction hashFunction = Hashing.sha256();
-        long hash = hashFunction.newHasher().putBytes(object.toString().getBytes(StandardCharsets.UTF_8)).hash().asLong();
-
-        return hash;
-    }
 
 }
