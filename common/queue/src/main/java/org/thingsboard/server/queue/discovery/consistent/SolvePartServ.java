@@ -21,7 +21,7 @@ public class SolvePartServ implements PartitionService {
     private Map<Node, Integer> nowInBucket;
     private ConcurrentSkipListMap<Long, VirtualNode> virtualNodeHash = new ConcurrentSkipListMap<>();
 
-    public int getCOPY_VIRTUAL_NODE() {
+    int getCOPY_VIRTUAL_NODE() {
         return COPY_VIRTUAL_NODE;
     }
 
@@ -49,7 +49,7 @@ public class SolvePartServ implements PartitionService {
         this.countNode = countNode;
     }
 
-    public ConcurrentSkipListMap<Long, VirtualNode> createVirtualNodes(List<Node> nodes) {
+    ConcurrentSkipListMap<Long, VirtualNode> createVirtualNodes(List<Node> nodes) {
 
         ConcurrentSkipListMap<Long, VirtualNode> vNodeHash = new ConcurrentSkipListMap<>();
         nowInBucket = new HashMap<>(countNode);
@@ -84,7 +84,7 @@ public class SolvePartServ implements PartitionService {
         return (cntClient / cntNode) + ((cntClient % cntNode != 0) ? 1 : 0);
     }
 
-    public Node addTopic(Topic topic, int limitTopicInNode) {
+    Node addTopic(Topic topic, int limitTopicInNode) {
 
         long hash = getHash(topic);
         return searchVirtualNode(hash, limitTopicInNode);
@@ -125,6 +125,5 @@ public class SolvePartServ implements PartitionService {
         }
         return null;
     }
-
 
 }

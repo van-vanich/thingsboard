@@ -8,8 +8,6 @@ import java.util.*;
 import java.util.concurrent.*;
 
 import static org.junit.Assert.*;
-import static org.mockito.ArgumentMatchers.any;
-
 @Slf4j
 public class SolvePartitionServiceTest {
     private SolvePartServ resolver;
@@ -29,7 +27,7 @@ public class SolvePartitionServiceTest {
 
     }
 
-    @Test//(expected = Exception.class)
+    @Test
     public void getCeilWithException() {
 
         assertEquals(-1, resolver.getCeil(0, 0));
@@ -94,7 +92,7 @@ public class SolvePartitionServiceTest {
             for (Map.Entry<Topic, Node> entry : solution.entrySet()) {
                 if (entry.getValue().equals(node)) cntTopicUseNode++;
             }
-            assertTrue((cntTopicUseNode >= floor && cntTopicUseNode <= ceil));
+            assertTrue("Replace not balanced", (cntTopicUseNode >= floor && cntTopicUseNode <= ceil));
         }
         log.warn("floor = {}, ceil = {}", floor, ceil);
     }
@@ -112,16 +110,16 @@ public class SolvePartitionServiceTest {
             long finishHash = topicsHash.get(i);
             ConcurrentNavigableMap<Long, VirtualNode> sublist =
                     virtualNodeHash.subMap(startHash, true, finishHash, true);
-            int nodeBetweenTopics = getNodeBetweenTopics(nodes, sublist);
+            int nodeBetweenTopics = getNodeBetweenTopics(sublist);
             average += nodeBetweenTopics;
         }
         average += topics.size() - 1;
         average /= topics.size();
         log.warn("average virtual node = {}", average);
-        assertTrue(average >= Math.min((nodes.size()),resolver.getCOPY_VIRTUAL_NODE() - 5) * 0.5);
+        assertTrue("Virtual node has bad place on circle",average >= Math.min((nodes.size()),resolver.getCOPY_VIRTUAL_NODE() - 5) * 0.5);
     }
 
-    private int getNodeBetweenTopics(List<Node> nodes, ConcurrentNavigableMap<Long, VirtualNode> sublist) {
+    private int getNodeBetweenTopics(ConcurrentNavigableMap<Long, VirtualNode> sublist) {
         HashSet<Node> nodeBetweenTopics = new HashSet<>();
         for (Map.Entry<Long, VirtualNode> entry : sublist.entrySet()) {
             nodeBetweenTopics.add(entry.getValue().getNode());
@@ -333,6 +331,82 @@ public class SolvePartitionServiceTest {
         checkBalanced(state, topics.size(), nodes);
         checkVirtualNodesBetweenTopics(nodes, topics);
         beforeEqualsNowAndUnique(topics.size(), state);
+
+        for (int i = 0; i < 5000; i++) {
+            nodes.remove((int)(nodes.size() * Math.random()));
+        }
+
+        countDifferentState(state, resolver.balancePartitionService(nodes, topics) , 10000, 5000);
+
+    }
+
+    @Test
+    public void deleteFirstNode() {
+        List<Topic> topics = topicsList(100);
+        List<Node> nodes = nodesList(100);
+        Map<Topic, Node> state = resolver.balancePartitionService(nodes, topics);
+        checkBalanced(state, topics.size(), nodes);
+        checkVirtualNodesBetweenTopics(nodes, topics);
+        beforeEqualsNowAndUnique(topics.size(), state);
+
+        nodes.remove(0);
+
+        countDifferentState(state, resolver.balancePartitionService(nodes, topics) , 100, 99);
+
+    }
+
+    @Test
+    public void addTwoNodes(){
+        List<Topic> topics = topicsList(6);
+        List<Node> nodes = nodesList(6);
+
+
+        Map<Topic, Node> pastState = resolver.balancePartitionService(nodes, topics);
+        checkBalanced(pastState, topics.size(), nodes);
+        checkVirtualNodesBetweenTopics(nodes, topics);
+        beforeEqualsNowAndUnique(topics.size(), pastState);
+
+        nodes.add(new Node("node6"));
+        nodes.add(new Node("node7"));
+
+        Map<Topic, Node> presentState = resolver.balancePartitionService(nodes, topics);
+        countDifferentState(pastState, presentState, nodes.size() - 2, nodes.size());
+        checkBalanced(presentState, topics.size(), nodes);
+        checkVirtualNodesBetweenTopics(nodes, topics);
+        beforeEqualsNowAndUnique(topics.size(), presentState);
+    }
+
+    @Test
+    public void removeTwoAddTwoNodes() {
+        List<Topic> topics = topicsList(6);
+        List<Node> nodes = nodesList(6);
+
+        Map<Topic, Node> pastState = resolver.balancePartitionService(nodes, topics);
+        checkBalanced(pastState, topics.size(), nodes);
+        checkVirtualNodesBetweenTopics(nodes, topics);
+        beforeEqualsNowAndUnique(topics.size(), pastState);
+
+        Node nodeReplaceFirst = nodes.get(2);
+        Node nodeReplaceSecond = nodes.get(4);
+
+        nodes.remove(nodeReplaceFirst);
+        nodes.remove(nodeReplaceSecond);
+
+        Map<Topic, Node> presentState = resolver.balancePartitionService(nodes, topics);
+        countDifferentState(pastState, presentState, nodes.size() + 2, nodes.size());
+        checkBalanced(presentState, topics.size(), nodes);
+        checkVirtualNodesBetweenTopics(nodes, topics);
+        beforeEqualsNowAndUnique(topics.size(), presentState);
+        pastState = presentState;
+
+        nodes.add(nodeReplaceFirst);
+        nodes.add(nodeReplaceSecond);
+        presentState = resolver.balancePartitionService(nodes, topics);
+        countDifferentState(pastState, presentState, nodes.size() - 2, nodes.size());
+        checkBalanced(presentState, topics.size(), nodes);
+        checkVirtualNodesBetweenTopics(nodes, topics);
+        beforeEqualsNowAndUnique(topics.size(), presentState);
+
 
     }
 }
