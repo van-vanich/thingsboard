@@ -13,7 +13,7 @@ import java.util.concurrent.ConcurrentNavigableMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 
 @Slf4j
-public class SolvePartServ implements PartitionService {
+public class SolvePartitionService implements PartitionService {
 
     private final int COPY_VIRTUAL_NODE = 200;
     private int countTopic = 0;
@@ -39,7 +39,7 @@ public class SolvePartServ implements PartitionService {
         Map<Topic, Node> answer = searchVirtualNodesForTopics(topics);
 
 
-        log.warn("cnt Client = " + countTopic + ", cntNode = " + countNode);
+        log.warn("count Client = " + countTopic + ", count Node = " + countNode);
         return answer;
 
     }
@@ -90,8 +90,20 @@ public class SolvePartServ implements PartitionService {
         return searchVirtualNode(hash, limitTopicInNode);
     }
 
+    private Node searchVirtualNode(long start, long finish, int limitTopicInNode) {
+        ConcurrentNavigableMap<Long, VirtualNode> sublist = virtualNodeHash.subMap(start, true, finish, true);
+        for (Map.Entry<Long, VirtualNode> entry : sublist.entrySet()) {
+            Node node = entry.getValue().getNode();
+            if (nowInBucket.get(node) < limitTopicInNode) {
+                nowInBucket.put(node, nowInBucket.get(node) + 1);
+                return node;
+            }
+        }
+        return null;
+    }
+
     long getHash(Topic topic) {
-        return getHash("topic_" + topic.getName());
+        return getHash("topic_" + topic.getName()) * 7;
     }
 
     long getHash(VirtualNode virtualNode) {
@@ -111,19 +123,9 @@ public class SolvePartServ implements PartitionService {
         if (node == null) node = searchVirtualNode(Long.MIN_VALUE, hash - 1, limitTopicInNode);
         Objects.requireNonNull(node, "No solution found");
         return node;
-    }
 
 
-    private Node searchVirtualNode(long start, long finish, int limitTopicInNode) {
-        ConcurrentNavigableMap<Long, VirtualNode> sublist = virtualNodeHash.subMap(start, true, finish, true);
-        for (Map.Entry<Long, VirtualNode> entry : sublist.entrySet()) {
-            Node node = entry.getValue().getNode();
-            if (nowInBucket.get(node) < limitTopicInNode) {
-                nowInBucket.put(node, nowInBucket.get(node) + 1);
-                return node;
-            }
-        }
-        return null;
     }
+
 
 }

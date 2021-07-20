@@ -1,6 +1,5 @@
 package org.thingsboard.server.queue.discovery.consistent;
 
-
 import lombok.extern.slf4j.Slf4j;
 import org.junit.*;
 
@@ -8,13 +7,14 @@ import java.util.*;
 import java.util.concurrent.*;
 
 import static org.junit.Assert.*;
+
 @Slf4j
 public class SolvePartitionServiceTest {
-    private SolvePartServ resolver;
+    private SolvePartitionService resolver;
 
     @Before
     public void init() {
-        resolver = new SolvePartServ();
+        resolver = new SolvePartitionService();
     }
 
     @Test
@@ -30,7 +30,7 @@ public class SolvePartitionServiceTest {
     @Test
     public void getCeilWithException() {
 
-        assertEquals(-1, resolver.getCeil(0, 0));
+        assertEquals("div zero",-1, resolver.getCeil(0, 0));
         assertEquals(-1, resolver.getCeil(5, -5));
         assertEquals(-1, resolver.getCeil(-5, 5));
     }
@@ -124,7 +124,6 @@ public class SolvePartitionServiceTest {
         for (Map.Entry<Long, VirtualNode> entry : sublist.entrySet()) {
             nodeBetweenTopics.add(entry.getValue().getNode());
         }
-//        log.warn("nodes between topics = {}, need = {}", nodeBetweenTopics.size(), nodes.size());
         return nodeBetweenTopics.size();
     }
 
@@ -139,9 +138,6 @@ public class SolvePartitionServiceTest {
             if (aLong.equals(t1)) return 0;
             return 1;
         });
-
-//
-
 
         return topicsHash;
     }
@@ -357,8 +353,8 @@ public class SolvePartitionServiceTest {
 
     @Test
     public void addTwoNodes(){
-        List<Topic> topics = topicsList(6);
-        List<Node> nodes = nodesList(6);
+        List<Topic> topics = topicsList(10);
+        List<Node> nodes = nodesList(4);
 
 
         Map<Topic, Node> pastState = resolver.balancePartitionService(nodes, topics);
@@ -366,8 +362,8 @@ public class SolvePartitionServiceTest {
         checkVirtualNodesBetweenTopics(nodes, topics);
         beforeEqualsNowAndUnique(topics.size(), pastState);
 
-        nodes.add(new Node("node6"));
-        nodes.add(new Node("node7"));
+        nodes.add(new Node("node4"));
+        nodes.add(new Node("node5"));
 
         Map<Topic, Node> presentState = resolver.balancePartitionService(nodes, topics);
         countDifferentState(pastState, presentState, nodes.size() - 2, nodes.size());
@@ -407,6 +403,27 @@ public class SolvePartitionServiceTest {
         checkVirtualNodesBetweenTopics(nodes, topics);
         beforeEqualsNowAndUnique(topics.size(), presentState);
 
+    }
+
+    @Test
+    public void fromFiveToTwenty() {
+        List<Topic> topics = topicsList(20);
+        List<Node> nodes = nodesList(5);
+
+        Map<Topic, Node> pastState = resolver.balancePartitionService(nodes, topics);
+        checkBalanced(pastState, topics.size(), nodes);
+        checkVirtualNodesBetweenTopics(nodes, topics);
+        beforeEqualsNowAndUnique(topics.size(), pastState);
+
+        for (int i=5; i<20; i++) {
+            nodes.add(new Node("node" + (i)));
+        }
+
+        Map<Topic, Node> presentState = resolver.balancePartitionService(nodes, topics);
+        checkBalanced(presentState, topics.size(), nodes);
+        checkVirtualNodesBetweenTopics(nodes, topics);
+        beforeEqualsNowAndUnique(topics.size(), presentState);
+        countDifferentState(pastState, presentState, nodes.size() - 15, nodes.size());
 
     }
 }
