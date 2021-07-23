@@ -70,7 +70,7 @@ public class SolvePartitionService implements PartitionService {
         int floor = countTopic / countNode;
         int ceil = getCeil(countTopic, countNode);
         for (int i=0; i<topics.size(); i++) {
-
+            //floor then topic >> floor & topic with optimize for balance
             Node node = addTopic(topics.get(i), i < floor * countNode ? floor : ceil);
             answer.put(topics.get(i), node);
         }
