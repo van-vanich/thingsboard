@@ -24,53 +24,7 @@ import static org.junit.Assert.*;
 @RunWith(MockitoJUnitRunner.class)
 public class SolveWithConsistentHashingTest {
 
-    private final String hashFunctionName = "sha256";
-
     private SolveWithConsistentHashing resolver = new SolveWithConsistentHashing();
-    private HashPartitionService clusterRoutingService;
-
-    private TbServiceInfoProvider discoveryService;
-    private TenantRoutingInfoService routingInfoService;
-    private ApplicationEventPublisher applicationEventPublisher;
-    private TbQueueRuleEngineSettings ruleEngineSettings;
-
-
-    public void init(int SERVER_COUNT, int PARTITION_COUNT) {
-        discoveryService = mock(TbServiceInfoProvider.class);
-        applicationEventPublisher = mock(ApplicationEventPublisher.class);
-        routingInfoService = mock(TenantRoutingInfoService.class);
-        ruleEngineSettings = mock(TbQueueRuleEngineSettings.class);
-        clusterRoutingService = new HashPartitionService(discoveryService,
-                routingInfoService,
-                applicationEventPublisher,
-                ruleEngineSettings
-        );
-        when(ruleEngineSettings.getQueues()).thenReturn(Collections.emptyList());
-        ReflectionTestUtils.setField(clusterRoutingService, "coreTopic", "tb.core");
-        ReflectionTestUtils.setField(clusterRoutingService, "corePartitions", PARTITION_COUNT);
-        ReflectionTestUtils.setField(clusterRoutingService, "hashFunctionName", hashFunctionName);
-        ServiceInfo currentServer = ServiceInfo.newBuilder()
-                .setServiceId("tb-core-0")
-                .setTenantIdMSB(TenantId.NULL_UUID.getMostSignificantBits())
-                .setTenantIdLSB(TenantId.NULL_UUID.getLeastSignificantBits())
-                .addAllServiceTypes(Collections.singletonList(ServiceType.TB_CORE.name()))
-                .build();
-//        when(discoveryService.getServiceInfo()).thenReturn(currentServer);
-        List<ServiceInfo> otherServers = new ArrayList<>();
-        for (int i = 1; i < SERVER_COUNT; i++) {
-            otherServers.add(ServiceInfo.newBuilder()
-                    .setServiceId("tb-rule-" + i)
-                    .setTenantIdMSB(TenantId.NULL_UUID.getMostSignificantBits())
-                    .setTenantIdLSB(TenantId.NULL_UUID.getLeastSignificantBits())
-                    .addAllServiceTypes(Collections.singletonList(ServiceType.TB_CORE.name()))
-                    .build());
-        }
-        clusterRoutingService.init();
-        clusterRoutingService.recalculatePartitions(currentServer, otherServers);
-
-    }
-
-
 
     @Test
     public void getCeil() {
