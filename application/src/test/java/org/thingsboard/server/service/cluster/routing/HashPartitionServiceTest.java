@@ -28,6 +28,7 @@ import org.thingsboard.server.common.data.id.DeviceId;
 import org.thingsboard.server.common.data.id.TenantId;
 import org.thingsboard.server.queue.discovery.HashPartitionService;
 import org.thingsboard.server.common.msg.queue.ServiceType;
+import org.thingsboard.server.queue.discovery.PartitionResolver;
 import org.thingsboard.server.queue.discovery.TbServiceInfoProvider;
 import org.thingsboard.server.common.msg.queue.TopicPartitionInfo;
 import org.thingsboard.server.gen.transport.TransportProtos;
@@ -57,6 +58,7 @@ public class HashPartitionServiceTest {
     private TenantRoutingInfoService routingInfoService;
     private ApplicationEventPublisher applicationEventPublisher;
     private TbQueueRuleEngineSettings ruleEngineSettings;
+    private PartitionResolver resolver;
 
     private String hashFunctionName = "sha256";
 
@@ -67,10 +69,12 @@ public class HashPartitionServiceTest {
         applicationEventPublisher = mock(ApplicationEventPublisher.class);
         routingInfoService = mock(TenantRoutingInfoService.class);
         ruleEngineSettings = mock(TbQueueRuleEngineSettings.class);
+        resolver = mock(PartitionResolver.class);
         clusterRoutingService = new HashPartitionService(discoveryService,
                 routingInfoService,
                 applicationEventPublisher,
-                ruleEngineSettings
+                ruleEngineSettings,
+                resolver
         );
         when(ruleEngineSettings.getQueues()).thenReturn(Collections.emptyList());
         ReflectionTestUtils.setField(clusterRoutingService, "coreTopic", "tb.core");

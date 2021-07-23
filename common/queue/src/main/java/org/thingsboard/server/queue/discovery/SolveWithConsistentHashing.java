@@ -4,6 +4,8 @@ import com.google.common.hash.HashFunction;
 import com.google.common.hash.Hashing;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
+import org.springframework.stereotype.Component;
 import org.thingsboard.server.gen.transport.TransportProtos.ServiceInfo;
 
 import java.nio.charset.StandardCharsets;
@@ -12,6 +14,8 @@ import java.util.concurrent.ConcurrentNavigableMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 
 @Slf4j
+@Component
+@ConditionalOnExpression("'${partitions.replace_algorithm_name:null}'=='consistent'")
 public class SolveWithConsistentHashing implements PartitionResolver{
 
     @Getter
@@ -38,7 +42,9 @@ public class SolveWithConsistentHashing implements PartitionResolver{
     public Map<String, ServiceInfo> balancePartitionService(List<ServiceInfo> nodes, int partitionSize) {
 
         List<String> topics = new ArrayList<>();
-        for (int i=0; i<partitionSize; i++) topics.add("topic" + i);
+        for (int i=0; i<partitionSize; i++) {
+            topics.add("topic" + i);
+        }
 
         if (nodes == null) {
             return answer = new HashMap<>();

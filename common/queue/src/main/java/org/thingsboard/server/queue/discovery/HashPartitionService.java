@@ -51,7 +51,7 @@ import java.util.stream.Collectors;
 
 @Service
 @Slf4j
-public class HashPartitionService implements PartitionService, PartitionResolver {
+public class HashPartitionService implements PartitionService {
 
     @Value("${queue.core.topic}")
     private String coreTopic;
@@ -59,14 +59,12 @@ public class HashPartitionService implements PartitionService, PartitionResolver
     private Integer corePartitions;
     @Value("${queue.partitions.hash_function_name:murmur3_128}")
     private String hashFunctionName;
-    private String resolverName = "consistent hashing";
-    private PartitionResolver resolver;
-
 
     private final ApplicationEventPublisher applicationEventPublisher;
     private final TbServiceInfoProvider serviceInfoProvider;
     private final TenantRoutingInfoService tenantRoutingInfoService;
     private final TbQueueRuleEngineSettings tbQueueRuleEngineSettings;
+    private final PartitionResolver resolver;
     private final ConcurrentMap<ServiceQueue, String> partitionTopics = new ConcurrentHashMap<>();
     private final ConcurrentMap<ServiceQueue, Integer> partitionSizes = new ConcurrentHashMap<>();
     private final ConcurrentMap<TenantId, TenantRoutingInfo> tenantRoutingInfoMap = new ConcurrentHashMap<>();
@@ -83,20 +81,18 @@ public class HashPartitionService implements PartitionService, PartitionResolver
     public HashPartitionService(TbServiceInfoProvider serviceInfoProvider,
                                 TenantRoutingInfoService tenantRoutingInfoService,
                                 ApplicationEventPublisher applicationEventPublisher,
-                                TbQueueRuleEngineSettings tbQueueRuleEngineSettings) {
+                                TbQueueRuleEngineSettings tbQueueRuleEngineSettings,
+                                PartitionResolver resolver) {
         this.serviceInfoProvider = serviceInfoProvider;
         this.tenantRoutingInfoService = tenantRoutingInfoService;
         this.applicationEventPublisher = applicationEventPublisher;
         this.tbQueueRuleEngineSettings = tbQueueRuleEngineSettings;
+        this.resolver = resolver;
     }
 
     @PostConstruct
     public void init() {
         this.hashFunction = forName(hashFunctionName);
-
-        if (resolverName.equals("consistent hashing")) {
-            resolver = new SolveWithConsistentHashing();
-        } else resolver = new OldAlgo();
 
         partitionSizes.put(new ServiceQueue(ServiceType.TB_CORE), corePartitions);
         partitionTopics.put(new ServiceQueue(ServiceType.TB_CORE), coreTopic);
@@ -150,7 +146,7 @@ public class HashPartitionService implements PartitionService, PartitionResolver
         partitionSizes.forEach((serviceQueue, size) -> {
             ServiceQueueKey myServiceQueueKey = new ServiceQueueKey(serviceQueue, myIsolatedOrSystemTenantId);
             for (int i = 0; i < size; i++) {
-                ServiceInfo serviceInfo = resolveByPartitionIdx(queueServicesMap.get(myServiceQueueKey), i, size);
+                ServiceInfo serviceInfo = resolver.resolveByPartitionIdx(queueServicesMap.get(myServiceQueueKey), i, size);
                 if (currentService.equals(serviceInfo)) {
                     ServiceQueueKey serviceQueueKey = new ServiceQueueKey(serviceQueue, getSystemOrIsolatedTenantId(serviceInfo));
                     myPartitions.computeIfAbsent(serviceQueueKey, key -> new ArrayList<>()).add(i);
@@ -340,12 +336,6 @@ public class HashPartitionService implements PartitionService, PartitionResolver
                 queueServiceList.computeIfAbsent(serviceQueueKey, key -> new ArrayList<>()).add(instance);
             }
         }
-    }
-
-    @Override
-    public ServiceInfo resolveByPartitionIdx(List<ServiceInfo> servers, Integer partitionIdx, int size) {
-
-        return resolver.resolveByPartitionIdx(servers, partitionIdx, size);
     }
 
     public static HashFunction forName(String name) {
