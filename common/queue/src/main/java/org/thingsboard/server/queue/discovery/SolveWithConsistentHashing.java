@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2016-2021 The Thingsboard Authors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.thingsboard.server.queue.discovery;
 
 import com.google.common.hash.HashFunction;
@@ -5,18 +20,22 @@ import com.google.common.hash.Hashing;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
-import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Service;
 import org.thingsboard.server.gen.transport.TransportProtos.ServiceInfo;
 
 import java.nio.charset.StandardCharsets;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentNavigableMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 
 @Slf4j
-@Component
-@ConditionalOnExpression("'${partitions.replace_algorithm_name:null}'=='consistent'")
-public class SolveWithConsistentHashing implements PartitionResolver{
+@Service
+@ConditionalOnExpression("'${queue.partitions.replace_algorithm_name:null}'=='consistent'")
+public class SolveWithConsistentHashing implements PartitionResolver {
 
     @Getter
     private final int COPY_VIRTUAL_NODE = 200;
@@ -26,7 +45,6 @@ public class SolveWithConsistentHashing implements PartitionResolver{
     private Map<String, ServiceInfo> answer;
     private List<ServiceInfo> lastServers = new ArrayList<>();
     private int lastPartitionsTotal;
-
     private ConcurrentSkipListMap<Long, VirtualServiceInfo> virtualNodeHash = new ConcurrentSkipListMap<>();
 
     @Override
@@ -49,6 +67,7 @@ public class SolveWithConsistentHashing implements PartitionResolver{
         if (nodes == null) {
             return answer = new HashMap<>();
         }
+
         if (topics.size() == 0 || nodes.size() == 0) {
             return answer = new HashMap<>();
         }
@@ -57,7 +76,7 @@ public class SolveWithConsistentHashing implements PartitionResolver{
 
         virtualNodeHash = createVirtualNodes(nodes);
 
-        log.warn("count Client = " + countTopic + ", count Node = " + countNode);
+        log.info("count Client = " + countTopic + ", count Node = " + countNode);
 
         return answer = searchVirtualNodesForTopics(topics);
 
@@ -91,6 +110,7 @@ public class SolveWithConsistentHashing implements PartitionResolver{
         for (int i=0; i<topics.size(); i++) {
             ServiceInfo serviceInfo = addTopic(topics.get(i), i < floor * countNode ? floor : ceil);
             answer.put(topics.get(i), serviceInfo);
+            log.info("{} go to {}", topics.get(i), "service" + serviceInfo.getServiceId());
         }
 
         return answer;
