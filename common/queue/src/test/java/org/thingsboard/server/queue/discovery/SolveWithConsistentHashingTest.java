@@ -23,31 +23,33 @@ import org.thingsboard.server.common.data.id.TenantId;
 import org.thingsboard.server.common.msg.queue.ServiceType;
 import org.thingsboard.server.gen.transport.TransportProtos.ServiceInfo;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentNavigableMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 @Slf4j
 @RunWith(MockitoJUnitRunner.class)
 public class SolveWithConsistentHashingTest {
 
-    private SolveWithConsistentHashing resolver = new SolveWithConsistentHashing();
+    private final SolveWithConsistentHashing resolver = new SolveWithConsistentHashing();
 
     @Test
     public void getCeil() {
-
-
         assertEquals(1, resolver.getCeil(1, 1));
         assertEquals(4, resolver.getCeil(12, 3));
         assertEquals(8, resolver.getCeil(54, 7));
-
     }
 
     @Test
     public void getCeilWithException() {
-
         assertEquals("div zero",-1, resolver.getCeil(0, 0));
         assertEquals(-1, resolver.getCeil(5, -5));
         assertEquals(-1, resolver.getCeil(-5, 5));
@@ -63,45 +65,49 @@ public class SolveWithConsistentHashingTest {
                 countReplaceTopic++;
             }
         }
-
-        double percentTopics = countReplaceTopic * 100D / pastState.size();
-        double percentNodes = 100D * Math.abs(pastCountNode - presentCountNode) / Math.max(pastCountNode, presentCountNode);
-
+        double maxPercent = 100D;
+        double percentTopics = getPercentTopics(pastState.size(), countReplaceTopic, maxPercent);
+        double percentNodes = getPercentNodes(pastCountNode, presentCountNode, maxPercent);
         log.warn("replace {}% topics and {}% nodes", percentTopics, percentNodes);
+    }
+
+    private double getPercentNodes(int pastCountNode, int presentCountNode, double maxPercent) {
+        return maxPercent * Math.abs(pastCountNode - presentCountNode) / Math.max(pastCountNode, presentCountNode);
+    }
+
+    private double getPercentTopics(int pastStateSize, int countReplaceTopic, double maxPercent) {
+        double percentTopics = countReplaceTopic * maxPercent / pastStateSize;
+        return percentTopics;
     }
 
     Map<String, ServiceInfo> testResolvePart(int topicsCount, int nodesCount) {
         List<ServiceInfo> nodes = nodesList(nodesCount);
-
         Map<String, ServiceInfo> solution = resolver.balancePartitionService(nodes, topicsCount);
-
-        checkBalanced(solution, topicsCount, nodes);
-        checkVirtualNodesBetweenTopics(nodes, topicsCount);
-        beforeEqualsNowAndUnique(topicsCount, solution);
-
+        checkAllError(topicsCount, nodes, solution);
         return solution;
     }
 
    List<ServiceInfo> nodesList(int count) {
-
        List<ServiceInfo> otherServers = new ArrayList<>();
        for (int i = 1; i <= count; i++) {
-           otherServers.add(ServiceInfo.newBuilder()
-                   .setServiceId("tb-rule-" + i)
-                   .setTenantIdMSB(TenantId.NULL_UUID.getMostSignificantBits())
-                   .setTenantIdLSB(TenantId.NULL_UUID.getLeastSignificantBits())
-                   .addAllServiceTypes(Collections.singletonList(ServiceType.TB_CORE.name()))
-                   .build());
+           otherServers.add(createServiceInfo(i));
        }
         return otherServers;
     }
 
-    void checkBalanced(Map<String, ServiceInfo> solution, int topicsCount, List<ServiceInfo> nodes) {
+    private ServiceInfo createServiceInfo(int position) {
+        return ServiceInfo.newBuilder()
+                .setServiceId("tb-rule-" + position)
+                .setTenantIdMSB(TenantId.NULL_UUID.getMostSignificantBits())
+                .setTenantIdLSB(TenantId.NULL_UUID.getLeastSignificantBits())
+                .addAllServiceTypes(Collections.singletonList(ServiceType.TB_CORE.name()))
+                .build();
+    }
 
+    void checkBalanced(Map<String, ServiceInfo> solution, int topicsCount, List<ServiceInfo> nodes) {
         int floor = topicsCount / nodes.size();
         int ceil = floor + ((topicsCount % nodes.size() > 0) ? 1 : 0);
         for (ServiceInfo node : nodes) {
-
             int cntTopicUseNode = 0;
             for (Map.Entry<String, ServiceInfo> entry : solution.entrySet()) {
                 if (entry.getValue().equals(node)) cntTopicUseNode++;
@@ -112,13 +118,9 @@ public class SolveWithConsistentHashingTest {
     }
 
     void checkVirtualNodesBetweenTopics(List<ServiceInfo> nodes, int topics) {
-
         ConcurrentSkipListMap<Long, VirtualServiceInfo> virtualNodeHash = resolver.createVirtualNodes(nodes);
-
         List<Long> topicsHash = getTopicHash(topics);
-
         int average = 0;
-
         for (int i = 1; i < topicsHash.size(); i++) {
             long startHash = topicsHash.get(i - 1);
             long finishHash = topicsHash.get(i);
@@ -146,13 +148,11 @@ public class SolveWithConsistentHashingTest {
         for (int i=0; i<topics; i++) {
             topicsHash.add(resolver.getHash("topic" + i));
         }
-
         topicsHash.sort((aLong, t1) -> {
             if (aLong < t1) return -1;
             if (aLong.equals(t1)) return 0;
             return 1;
         });
-
         return topicsHash;
     }
 
@@ -173,91 +173,67 @@ public class SolveWithConsistentHashingTest {
 
         countDifferentState(testResolvePart(6, 3),
                 testResolvePart(6, 2), 3, 2);
-
         countDifferentState(testResolvePart(30, 6),
                 testResolvePart(30, 5), 6, 5);
-
         countDifferentState(testResolvePart(100, 10),
                 testResolvePart(100, 9), 10, 9);
-
         countDifferentState(testResolvePart(100, 9),
                 testResolvePart(100, 8), 9, 8);
     }
 
     @Test
     public void deleteTwoNodes() {
-
         int topics = 6;
         List<ServiceInfo> nodes = nodesList(6);
 
         Map<String, ServiceInfo> pastState = resolver.balancePartitionService(nodes, topics);
-        checkBalanced(pastState, topics, nodes);
-        checkVirtualNodesBetweenTopics(nodes, topics);
-        beforeEqualsNowAndUnique(topics, pastState);
+        checkAllError(topics, nodes, pastState);
 
         nodes.remove(4);
         nodes.remove(1);
 
         Map<String, ServiceInfo> presentState = resolver.balancePartitionService(nodes, topics);
         countDifferentState(pastState, presentState, nodes.size() + 2, nodes.size());
-        checkBalanced(presentState, topics, nodes);
-        checkVirtualNodesBetweenTopics(nodes, topics);
-        beforeEqualsNowAndUnique(topics, presentState);
+        checkAllError(topics, nodes, presentState);
     }
 
     @Test
     public void deleteTwoRandomNodes() {
-
         int topics = 6;
         List<ServiceInfo> nodes = nodesList(6);
 
         Map<String, ServiceInfo> pastState = resolver.balancePartitionService(nodes, topics);
-        checkBalanced(pastState, topics, nodes);
-        checkVirtualNodesBetweenTopics(nodes, topics);
-        beforeEqualsNowAndUnique(topics, pastState);
+        checkAllError(topics, nodes, pastState);
 
         nodes.remove((int)(Math.random() * nodes.size()));
         nodes.remove((int)(Math.random() * nodes.size()));
 
         Map<String, ServiceInfo> presentState = resolver.balancePartitionService(nodes, topics);
         countDifferentState(pastState, presentState, nodes.size() + 2, nodes.size());
-        checkBalanced(presentState, topics, nodes);
-        checkVirtualNodesBetweenTopics(nodes, topics);
-        beforeEqualsNowAndUnique(topics, presentState);
+        checkAllError(topics, nodes, presentState);
     }
 
     @Test
     public void fourTopicsThreeNodes() {
-
         int topics = 4;
         List<ServiceInfo> nodes = nodesList(3);
-
         Map<String, ServiceInfo> state = resolver.balancePartitionService(nodes, topics);
-        checkBalanced(state, topics, nodes);
-        checkVirtualNodesBetweenTopics(nodes, topics);
-        beforeEqualsNowAndUnique(topics, state);
+        checkAllError(topics, nodes, state);
     }
 
     @Test
     public void sixTopicSixNodeUpdate() {
-
         int topics = 6;
         List<ServiceInfo> nodes = nodesList(6);
 
         Map<String, ServiceInfo> pastState = resolver.balancePartitionService(nodes, topics);
-        checkBalanced(pastState, topics, nodes);
-        checkVirtualNodesBetweenTopics(nodes, topics);
-        beforeEqualsNowAndUnique(topics, pastState);
+        checkAllError(topics, nodes, pastState);
         for (int i = 0; i < 6; i++) {
             ServiceInfo nodeRemoved = nodes.get(i);
             nodes.remove(i);
             Map<String, ServiceInfo> presentState = resolver.balancePartitionService(nodes, topics);
-
             countDifferentState(pastState, presentState, nodes.size() + 1, nodes.size());
-            checkBalanced(presentState, topics, nodes);
-            checkVirtualNodesBetweenTopics(nodes, topics);
-            beforeEqualsNowAndUnique(topics, presentState);
-
+            checkAllError(topics, nodes, presentState);
             pastState = presentState;
             nodes.add(i, nodeRemoved);
         }
@@ -265,14 +241,11 @@ public class SolveWithConsistentHashingTest {
 
     @Test
     public void turnOffAllOddNodes() {
-
         int topics = 25;
         List<ServiceInfo> nodes = nodesList(20);
 
         Map<String, ServiceInfo> pastState = resolver.balancePartitionService(nodes, topics);
-        checkBalanced(pastState, topics, nodes);
-        checkVirtualNodesBetweenTopics(nodes, topics);
-        beforeEqualsNowAndUnique(topics, pastState);
+        checkAllError(topics, nodes, pastState);
 
         for (int i = 0; i < 10; i++) {
             nodes.remove(i);
@@ -287,14 +260,11 @@ public class SolveWithConsistentHashingTest {
 
     @Test
     public void twentyNodeToFiveNode() {
-
         int topics = 20;
         List<ServiceInfo> nodes = nodesList(20);
 
         Map<String, ServiceInfo> pastState = resolver.balancePartitionService(nodes, topics);
-        checkBalanced(pastState, topics, nodes);
-        checkVirtualNodesBetweenTopics(nodes, topics);
-        beforeEqualsNowAndUnique(topics, pastState);
+        checkAllError(topics, nodes, pastState);
 
         for (int i = 0; i < 15; i++) {
             nodes.remove((int)(Math.random() * nodes.size()));
@@ -312,7 +282,6 @@ public class SolveWithConsistentHashingTest {
         int topics = 20;
         List<ServiceInfo> nodes = nodesList(0);
         resolver.balancePartitionService(nodes, topics);
-
     }
 
     @Test
@@ -320,7 +289,6 @@ public class SolveWithConsistentHashingTest {
         int topics = 5;
         List<ServiceInfo> nodes = null;
         resolver.balancePartitionService(nodes, topics);
-
     }
 
     @Test
@@ -328,16 +296,11 @@ public class SolveWithConsistentHashingTest {
         int topics = 10000;
         List<ServiceInfo> nodes = nodesList(10000);
         Map<String, ServiceInfo> state = resolver.balancePartitionService(nodes, topics);
-        checkBalanced(state, topics, nodes);
-        checkVirtualNodesBetweenTopics(nodes, topics);
-        beforeEqualsNowAndUnique(topics, state);
-
+        checkAllError(topics, nodes, state);
         for (int i = 0; i < 5000; i++) {
             nodes.remove((int)(nodes.size() * Math.random()));
         }
-
         countDifferentState(state, resolver.balancePartitionService(nodes, topics) , 10000, 5000);
-
     }
 
     @Test
@@ -345,14 +308,9 @@ public class SolveWithConsistentHashingTest {
         int topics = 100;
         List<ServiceInfo> nodes = nodesList(100);
         Map<String, ServiceInfo> state = resolver.balancePartitionService(nodes, topics);
-        checkBalanced(state, topics, nodes);
-        checkVirtualNodesBetweenTopics(nodes, topics);
-        beforeEqualsNowAndUnique(topics, state);
-
+        checkAllError(topics, nodes, state);
         nodes.remove(0);
-
         countDifferentState(state, resolver.balancePartitionService(nodes, topics) , 100, 99);
-
     }
 
     @Test
@@ -360,32 +318,15 @@ public class SolveWithConsistentHashingTest {
         int topics = 10;
         List<ServiceInfo> nodes = nodesList(4);
 
-
         Map<String, ServiceInfo> pastState = resolver.balancePartitionService(nodes, topics);
-        checkBalanced(pastState, topics, nodes);
-        checkVirtualNodesBetweenTopics(nodes, topics);
-        beforeEqualsNowAndUnique(topics, pastState);
+        checkAllError(topics, nodes, pastState);
 
-        nodes.add(ServiceInfo.newBuilder()
-                .setServiceId("tb-rule-" + 5)
-                .setTenantIdMSB(TenantId.NULL_UUID.getMostSignificantBits())
-                .setTenantIdLSB(TenantId.NULL_UUID.getLeastSignificantBits())
-                .addAllServiceTypes(Collections.singletonList(ServiceType.TB_CORE.name()))
-                .build());
-
-
-        nodes.add(ServiceInfo.newBuilder()
-                .setServiceId("tb-rule-" + 6)
-                .setTenantIdMSB(TenantId.NULL_UUID.getMostSignificantBits())
-                .setTenantIdLSB(TenantId.NULL_UUID.getLeastSignificantBits())
-                .addAllServiceTypes(Collections.singletonList(ServiceType.TB_CORE.name()))
-                .build());
+        nodes.add(createServiceInfo(5));
+        nodes.add(createServiceInfo(6));
 
         Map<String, ServiceInfo> presentState = resolver.balancePartitionService(nodes, topics);
         countDifferentState(pastState, presentState, nodes.size() - 2, nodes.size());
-        checkBalanced(presentState, topics, nodes);
-        checkVirtualNodesBetweenTopics(nodes, topics);
-        beforeEqualsNowAndUnique(topics, presentState);
+        checkAllError(topics, nodes, presentState);
     }
 
     @Test
@@ -394,30 +335,23 @@ public class SolveWithConsistentHashingTest {
         List<ServiceInfo> nodes = nodesList(6);
 
         Map<String, ServiceInfo> pastState = resolver.balancePartitionService(nodes, topics);
-        checkBalanced(pastState, topics, nodes);
-        checkVirtualNodesBetweenTopics(nodes, topics);
-        beforeEqualsNowAndUnique(topics, pastState);
+        checkAllError(topics, nodes, pastState);
 
         ServiceInfo nodeReplaceFirst = nodes.get(2);
         ServiceInfo nodeReplaceSecond = nodes.get(4);
-
         nodes.remove(nodeReplaceFirst);
         nodes.remove(nodeReplaceSecond);
 
         Map<String, ServiceInfo> presentState = resolver.balancePartitionService(nodes, topics);
         countDifferentState(pastState, presentState, nodes.size() + 2, nodes.size());
-        checkBalanced(presentState, topics, nodes);
-        checkVirtualNodesBetweenTopics(nodes, topics);
-        beforeEqualsNowAndUnique(topics, presentState);
+        checkAllError(topics, nodes, presentState);
         pastState = presentState;
 
         nodes.add(nodeReplaceFirst);
         nodes.add(nodeReplaceSecond);
         presentState = resolver.balancePartitionService(nodes, topics);
         countDifferentState(pastState, presentState, nodes.size() - 2, nodes.size());
-        checkBalanced(presentState, topics, nodes);
-        checkVirtualNodesBetweenTopics(nodes, topics);
-        beforeEqualsNowAndUnique(topics, presentState);
+        checkAllError(topics, nodes, presentState);
 
     }
 
@@ -427,24 +361,21 @@ public class SolveWithConsistentHashingTest {
         List<ServiceInfo> nodes = nodesList(5);
 
         Map<String, ServiceInfo> pastState = resolver.balancePartitionService(nodes, 20);
-        checkBalanced(pastState, topics, nodes);
-        checkVirtualNodesBetweenTopics(nodes, topics);
-        beforeEqualsNowAndUnique(topics, pastState);
+        checkAllError(topics, nodes, pastState);
 
         for (int i=6; i<=20; i++) {
-            nodes.add(ServiceInfo.newBuilder()
-                    .setServiceId("tb-rule-" + i)
-                    .setTenantIdMSB(TenantId.NULL_UUID.getMostSignificantBits())
-                    .setTenantIdLSB(TenantId.NULL_UUID.getLeastSignificantBits())
-                    .addAllServiceTypes(Collections.singletonList(ServiceType.TB_CORE.name()))
-                    .build());
+            nodes.add(createServiceInfo(i));
         }
 
         Map<String, ServiceInfo> presentState = resolver.balancePartitionService(nodes, topics);
-        checkBalanced(presentState, topics, nodes);
-        checkVirtualNodesBetweenTopics(nodes, topics);
-        beforeEqualsNowAndUnique(topics, presentState);
+        checkAllError(topics, nodes, presentState);
         countDifferentState(pastState, presentState, nodes.size() - 15, nodes.size());
 
+    }
+
+    private void checkAllError(int topics, List<ServiceInfo> nodes, Map<String, ServiceInfo> state) {
+        checkBalanced(state, topics, nodes);
+        checkVirtualNodesBetweenTopics(nodes, topics);
+        beforeEqualsNowAndUnique(topics, state);
     }
 }

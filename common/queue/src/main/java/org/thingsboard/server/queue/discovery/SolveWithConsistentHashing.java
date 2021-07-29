@@ -28,7 +28,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.concurrent.ConcurrentNavigableMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 
@@ -41,10 +40,10 @@ public class SolveWithConsistentHashing implements PartitionResolver {
     private final int COPY_VIRTUAL_NODE = 200;
     private int countTopic = 0;
     private int countNode = 0;
+    private int lastPartitionsTotal;
     private Map<ServiceInfo, Integer> nowInBucket;
     private Map<String, ServiceInfo> answer;
     private List<ServiceInfo> lastServers = new ArrayList<>();
-    private int lastPartitionsTotal;
     private ConcurrentSkipListMap<Long, VirtualServiceInfo> virtualNodeHash = new ConcurrentSkipListMap<>();
 
     @Override
@@ -62,33 +61,21 @@ public class SolveWithConsistentHashing implements PartitionResolver {
     }
 
     public Map<String, ServiceInfo> balancePartitionService(List<ServiceInfo> nodes, int partitionSize) {
-
+        if (nodes == null || partitionSize <= 0 || nodes.size() == 0) {
+            return answer = new HashMap<>();
+        }
         List<String> topics = new ArrayList<>();
         for (int i=0; i<partitionSize; i++) {
             topics.add("topic" + i);
         }
-
-        if (nodes == null) {
-            return answer = new HashMap<>();
-        }
-
-        if (topics.size() == 0 || nodes.size() == 0) {
-            return answer = new HashMap<>();
-        }
-
         setCountTopicAndNode(topics.size(), nodes.size());
-
         virtualNodeHash = createVirtualNodes(nodes);
-
         answer = searchVirtualNodesForTopics(topics);
-
         sendLogs();
-
         return answer;
     }
 
     private void sendLogs() {
-
         int min = Integer.MAX_VALUE;
         int max = Integer.MIN_VALUE;
         for (Map.Entry<ServiceInfo, Integer> entry : nowInBucket.entrySet()) {
@@ -105,14 +92,12 @@ public class SolveWithConsistentHashing implements PartitionResolver {
     }
 
     ConcurrentSkipListMap<Long, VirtualServiceInfo> createVirtualNodes(List<ServiceInfo> nodes) {
-
         ConcurrentSkipListMap<Long, VirtualServiceInfo> vNodeHash = new ConcurrentSkipListMap<>();
         nowInBucket = new HashMap<>(countNode);
         for (ServiceInfo serviceInfo : nodes) {
             for (int i = 0; i < COPY_VIRTUAL_NODE; i++) {
                 VirtualServiceInfo virtualNode = new VirtualServiceInfo(serviceInfo, i);
                 final long hash = getHash(virtualNode);
-
                 vNodeHash.put(hash, virtualNode);
             }
             nowInBucket.put(serviceInfo, 0);
@@ -129,32 +114,17 @@ public class SolveWithConsistentHashing implements PartitionResolver {
             answer.put(topics.get(i), serviceInfo);
             log.info("{} go to {}", topics.get(i), "service" + serviceInfo.getServiceId());
         }
-
         return answer;
     }
 
     int getCeil(int cntClient, int cntNode) {
-
         if (cntClient <= 0 || cntNode <= 0) return -1;
         return (cntClient / cntNode) + ((cntClient % cntNode != 0) ? 1 : 0);
     }
 
     ServiceInfo addTopic(String topic, int limitTopicInNode) {
-
         long hash = getHash(topic);
         return searchVirtualServiceInfo(hash, limitTopicInNode);
-    }
-
-    private ServiceInfo searchVirtualNode(long start, long finish, int limitTopicInNode) {
-        ConcurrentNavigableMap<Long, VirtualServiceInfo> sublist = virtualNodeHash.subMap(start, true, finish, true);
-        for (Map.Entry<Long, VirtualServiceInfo> entry : sublist.entrySet()) {
-            ServiceInfo serviceInfo = entry.getValue().getServiceInfo();
-            if (nowInBucket.get(serviceInfo) < limitTopicInNode) {
-                nowInBucket.put(serviceInfo, nowInBucket.get(serviceInfo) + 1);
-                return serviceInfo;
-            }
-        }
-        return null;
     }
 
     long getHash(String string) {
@@ -172,7 +142,18 @@ public class SolveWithConsistentHashing implements PartitionResolver {
 
         ServiceInfo serviceInfo = searchVirtualNode(hash, Long.MAX_VALUE, limitTopicInNode);
         if (serviceInfo == null) serviceInfo = searchVirtualNode(Long.MIN_VALUE, hash - 1, limitTopicInNode);
-//        Objects.requireNonNull(serviceInfo, "No solution found");
         return serviceInfo;
+    }
+
+    private ServiceInfo searchVirtualNode(long start, long finish, int limitTopicInNode) {
+        ConcurrentNavigableMap<Long, VirtualServiceInfo> sublist = virtualNodeHash.subMap(start, true, finish, true);
+        for (Map.Entry<Long, VirtualServiceInfo> entry : sublist.entrySet()) {
+            ServiceInfo serviceInfo = entry.getValue().getServiceInfo();
+            if (nowInBucket.get(serviceInfo) < limitTopicInNode) {
+                nowInBucket.put(serviceInfo, nowInBucket.get(serviceInfo) + 1);
+                return serviceInfo;
+            }
+        }
+        return null;
     }
 }
