@@ -76,8 +76,7 @@ public class SolveWithConsistentHashingTest {
     }
 
     private double getPercentTopics(int pastStateSize, int countReplaceTopic, double maxPercent) {
-        double percentTopics = countReplaceTopic * maxPercent / pastStateSize;
-        return percentTopics;
+        return countReplaceTopic * maxPercent / pastStateSize;
     }
 
     Map<String, ServiceInfo> testResolvePart(int topicsCount, int nodesCount) {
