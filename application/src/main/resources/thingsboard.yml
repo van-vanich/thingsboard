@@ -616,7 +616,7 @@ transport:
     # Enable/disable coap transport protocol.
     enabled: "${COAP_ENABLED:true}"
     bind_address: "${COAP_BIND_ADDRESS:0.0.0.0}"
-    bind_port: "${COAP_BIND_PORT:5684}"
+    bind_port: "${COAP_BIND_PORT:5683}"
     timeout: "${COAP_TIMEOUT:10000}"
     dtls:
       # Enable/disable DTLS 1.2 support
@@ -624,7 +624,7 @@ transport:
       # CoAP DTLS bind address
       bind_address: "${COAP_DTLS_BIND_ADDRESS:0.0.0.0}"
       # CoAP DTLS bind port
-      bind_port: "${COAP_DTLS_BIND_PORT:5684}"
+      bind_port: "${COAP_DTLS_BIND_PORT:5683}"
       # Path to the key store that holds the certificate
       key_store: "${COAP_DTLS_KEY_STORE:coapserver.jks}"
       # Password used to access the key store

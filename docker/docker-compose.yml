@@ -268,7 +268,6 @@ services:
     links:
         - tb-core1
         - tb-core2
-        - tb-core3
         - tb-web-ui1
         - tb-web-ui2
         - tb-mqtt-transport1
