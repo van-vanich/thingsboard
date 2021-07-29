@@ -33,6 +33,7 @@ public class SolveWithDistributedHashing implements PartitionResolver{
         if (servers == null || servers.isEmpty()) {
             return null;
         }
+        log.info("Distributed say {} to {}", partitionIdx, servers.get(partitionIdx % servers.size()));
         return servers.get(partitionIdx % servers.size());
     }
 }

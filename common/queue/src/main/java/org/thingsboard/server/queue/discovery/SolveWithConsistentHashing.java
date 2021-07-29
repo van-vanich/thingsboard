@@ -49,11 +49,15 @@ public class SolveWithConsistentHashing implements PartitionResolver {
 
     @Override
     public ServiceInfo resolveByPartitionIdx(List<ServiceInfo> servers, Integer partitionIdx, int partitionsTotal) {
+        if (servers == null || servers.isEmpty()) {
+            return null;
+        }
         if (!(servers.equals(lastServers) && partitionsTotal == lastPartitionsTotal)) {
             balancePartitionService(servers, partitionsTotal);
             lastPartitionsTotal = partitionsTotal;
             lastServers = servers;
         }
+        log.info("topic{} => {}", partitionIdx, answer.get("topic" + partitionIdx));
         return answer.get("topic" + partitionIdx);
     }
 
@@ -76,10 +80,23 @@ public class SolveWithConsistentHashing implements PartitionResolver {
 
         virtualNodeHash = createVirtualNodes(nodes);
 
-        log.info("count Client = " + countTopic + ", count Node = " + countNode);
+        answer = searchVirtualNodesForTopics(topics);
 
-        return answer = searchVirtualNodesForTopics(topics);
+        sendLogs();
 
+        return answer;
+    }
+
+    private void sendLogs() {
+
+        int min = Integer.MAX_VALUE;
+        int max = Integer.MIN_VALUE;
+        for (Map.Entry<ServiceInfo, Integer> entry : nowInBucket.entrySet()) {
+            min = Math.min(min, entry.getValue());
+            max = Math.max(max, entry.getValue());
+        }
+        log.info("count Client = {}, count Node = {}, min client in node = {}, max client in node = {}",
+                countTopic, countNode, min, max);
     }
 
     private void setCountTopicAndNode(int countTopic, int countNode) {
@@ -155,7 +172,7 @@ public class SolveWithConsistentHashing implements PartitionResolver {
 
         ServiceInfo serviceInfo = searchVirtualNode(hash, Long.MAX_VALUE, limitTopicInNode);
         if (serviceInfo == null) serviceInfo = searchVirtualNode(Long.MIN_VALUE, hash - 1, limitTopicInNode);
-        Objects.requireNonNull(serviceInfo, "No solution found");
+//        Objects.requireNonNull(serviceInfo, "No solution found");
         return serviceInfo;
     }
 }
