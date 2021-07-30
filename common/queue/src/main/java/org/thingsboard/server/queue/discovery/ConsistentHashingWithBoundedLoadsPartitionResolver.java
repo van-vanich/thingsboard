@@ -17,10 +17,8 @@ package org.thingsboard.server.queue.discovery;
 
 import com.google.common.hash.HashFunction;
 import com.google.common.hash.Hashing;
-import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
-import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Value;
 import org.thingsboard.server.gen.transport.TransportProtos.ServiceInfo;
 
 import java.nio.charset.StandardCharsets;
@@ -32,70 +30,61 @@ import java.util.concurrent.ConcurrentNavigableMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 
 @Slf4j
-@Service
-@ConditionalOnExpression("'${queue.partitions.replace_algorithm_name:null}'=='consistent'")
-public class SolveWithConsistentHashing implements PartitionResolver {
+public class ConsistentHashingWithBoundedLoadsPartitionResolver implements PartitionResolver {
 
-    @Getter
-    private final int COPY_VIRTUAL_NODE = 200;
-    private int countTopic = 0;
-    private int countNode = 0;
-    private int lastPartitionsTotal;
+    private static final String TOPIC_PREFIX = "topic";
+
+    @Value("${queue.partitions.virtual_nodes_count:200}")
+    private Integer virtualNodesCount;
+
     private Map<ServiceInfo, Integer> nowInBucket;
-    private Map<String, ServiceInfo> answer;
-    private List<ServiceInfo> lastServers = new ArrayList<>();
-    private ConcurrentSkipListMap<Long, VirtualServiceInfo> virtualNodeHash = new ConcurrentSkipListMap<>();
+    private Map<String, ServiceInfo> topicPartitionMapping;
+    private ConcurrentNavigableMap<Long, VirtualServiceInfo> virtualNodeHash = new ConcurrentSkipListMap<>();
 
     @Override
-    public ServiceInfo resolveByPartitionIdx(List<ServiceInfo> servers, Integer partitionIdx, int partitionsTotal) {
+    public ServiceInfo resolveByPartitionIdx(List<ServiceInfo> servers, Integer partitionIdx, int totalPartitions) {
         if (servers == null || servers.isEmpty()) {
             return null;
         }
-        if (!(servers.equals(lastServers) && partitionsTotal == lastPartitionsTotal)) {
-            balancePartitionService(servers, partitionsTotal);
-            lastPartitionsTotal = partitionsTotal;
-            lastServers = servers;
+        if (topicPartitionMapping == null) {
+            // TODO - rename calculateTopicPartitionMapping method and move it to interface
+            // make ConsistentHashingWithBoundedLoadsPartitionResolver and RoundRobinPartitionResolver not services, but local objects
+            topicPartitionMapping = calculateTopicPartitionMapping(servers, totalPartitions);
         }
-        log.info("topic{} => {}", partitionIdx, answer.get("topic" + partitionIdx));
-        return answer.get("topic" + partitionIdx);
+        log.info("topic-{} => {}", partitionIdx, topicPartitionMapping.get(TOPIC_PREFIX + partitionIdx));
+        return topicPartitionMapping.get(TOPIC_PREFIX + partitionIdx);
     }
 
-    public Map<String, ServiceInfo> balancePartitionService(List<ServiceInfo> nodes, int partitionSize) {
+    public Map<String, ServiceInfo> calculateTopicPartitionMapping(List<ServiceInfo> nodes, int partitionSize) {
         if (nodes == null || partitionSize <= 0 || nodes.size() == 0) {
-            return answer = new HashMap<>();
+            return new HashMap<>();
         }
         List<String> topics = new ArrayList<>();
-        for (int i=0; i<partitionSize; i++) {
-            topics.add("topic" + i);
+        for (int i = 0; i < partitionSize; i++) {
+            topics.add(TOPIC_PREFIX + i);
         }
-        setCountTopicAndNode(topics.size(), nodes.size());
         virtualNodeHash = createVirtualNodes(nodes);
-        answer = searchVirtualNodesForTopics(topics);
-        sendLogs();
-        return answer;
+        Map<String, ServiceInfo> result = searchVirtualNodesForTopics(topics, nodes.size());
+        logPartitionDistribution(topics.size(), nodes.size());
+        return result;
     }
 
-    private void sendLogs() {
+    private void logPartitionDistribution(int countTopic, int countNode) {
         int min = Integer.MAX_VALUE;
         int max = Integer.MIN_VALUE;
         for (Map.Entry<ServiceInfo, Integer> entry : nowInBucket.entrySet()) {
             min = Math.min(min, entry.getValue());
             max = Math.max(max, entry.getValue());
         }
-        log.info("count Client = {}, count Node = {}, min client in node = {}, max client in node = {}",
+        log.info("Client count = {}, Node count = {}, min clients in node = {}, max clients in node = {}",
                 countTopic, countNode, min, max);
-    }
-
-    private void setCountTopicAndNode(int countTopic, int countNode) {
-        this.countTopic = countTopic;
-        this.countNode = countNode;
     }
 
     ConcurrentSkipListMap<Long, VirtualServiceInfo> createVirtualNodes(List<ServiceInfo> nodes) {
         ConcurrentSkipListMap<Long, VirtualServiceInfo> vNodeHash = new ConcurrentSkipListMap<>();
-        nowInBucket = new HashMap<>(countNode);
+        nowInBucket = new HashMap<>(nodes.size());
         for (ServiceInfo serviceInfo : nodes) {
-            for (int i = 0; i < COPY_VIRTUAL_NODE; i++) {
+            for (int i = 0; i < virtualNodesCount; i++) {
                 VirtualServiceInfo virtualNode = new VirtualServiceInfo(serviceInfo, i);
                 final long hash = getHash(virtualNode);
                 vNodeHash.put(hash, virtualNode);
@@ -105,16 +94,16 @@ public class SolveWithConsistentHashing implements PartitionResolver {
         return vNodeHash;
     }
 
-    private Map<String, ServiceInfo> searchVirtualNodesForTopics(List<String> topics) {
-        Map<String, ServiceInfo> answer = new HashMap<>(topics.size());
-        int floor = countTopic / countNode;
-        int ceil = getCeil(countTopic, countNode);
-        for (int i=0; i<topics.size(); i++) {
+    private Map<String, ServiceInfo> searchVirtualNodesForTopics(List<String> topics, int countNode) {
+        Map<String, ServiceInfo> result = new HashMap<>(topics.size());
+        int floor = topics.size() / countNode;
+        int ceil = getCeil(topics.size(), countNode);
+        for (int i = 0; i < topics.size(); i++) {
             ServiceInfo serviceInfo = addTopic(topics.get(i), i < floor * countNode ? floor : ceil);
-            answer.put(topics.get(i), serviceInfo);
+            result.put(topics.get(i), serviceInfo);
             log.info("{} go to {}", topics.get(i), "service" + serviceInfo.getServiceId());
         }
-        return answer;
+        return result;
     }
 
     int getCeil(int cntClient, int cntNode) {
@@ -139,9 +128,10 @@ public class SolveWithConsistentHashing implements PartitionResolver {
     }
 
     private ServiceInfo searchVirtualServiceInfo(long hash, int limitTopicInNode) {
-
         ServiceInfo serviceInfo = searchVirtualNode(hash, Long.MAX_VALUE, limitTopicInNode);
-        if (serviceInfo == null) serviceInfo = searchVirtualNode(Long.MIN_VALUE, hash - 1, limitTopicInNode);
+        if (serviceInfo == null) {
+            serviceInfo = searchVirtualNode(Long.MIN_VALUE, hash - 1, limitTopicInNode);
+        }
         return serviceInfo;
     }
 
