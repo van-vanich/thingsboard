@@ -15,10 +15,15 @@
  */
 package org.thingsboard.server.queue.discovery;
 
-import org.thingsboard.server.gen.transport.TransportProtos.ServiceInfo;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
+import org.springframework.stereotype.Component;
 
-import java.util.List;
+@Component
+@ConditionalOnExpression("'${queue.partitions.algorithm_name:null}'=='consistent_hashing_with_bounded_loads'")
+public class ConsistentHashingWithBoundedLoadsPartitionResolverFactory implements PartitionResolverFactory {
 
-public interface PartitionResolver {
-    ServiceInfo resolveByPartitionIdx(List<ServiceInfo> servers, Integer partitionIdx, int totalPartitions);
+    @Override
+    public PartitionResolver createPartitionResolver() {
+        return new ConsistentHashingWithBoundedLoadsPartitionResolver();
+    }
 }

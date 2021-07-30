@@ -24,12 +24,10 @@ import org.thingsboard.server.gen.transport.TransportProtos.ServiceInfo;
 import java.util.List;
 
 @Slf4j
-@Service
-@ConditionalOnExpression("'${queue.partitions.replace_algorithm_name:null}'=='distributed'")
-public class SolveWithDistributedHashing implements PartitionResolver{
+public class RoundRobinPartitionResolver implements PartitionResolver {
 
     @Override
-    public ServiceInfo resolveByPartitionIdx(List<ServiceInfo> servers, Integer partitionIdx, int size) {
+    public ServiceInfo resolveByPartitionIdx(List<ServiceInfo> servers, Integer partitionIdx, int totalPartitions) {
         if (servers == null || servers.isEmpty()) {
             return null;
         }

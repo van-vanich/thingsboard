@@ -63,7 +63,7 @@ public class HashPartitionService implements PartitionService {
     private final TbServiceInfoProvider serviceInfoProvider;
     private final TenantRoutingInfoService tenantRoutingInfoService;
     private final TbQueueRuleEngineSettings tbQueueRuleEngineSettings;
-    private final PartitionResolver resolver;
+    private final PartitionResolverFactory resolverFactory;
     private final ConcurrentMap<ServiceQueue, String> partitionTopics = new ConcurrentHashMap<>();
     private final ConcurrentMap<ServiceQueue, Integer> partitionSizes = new ConcurrentHashMap<>();
     private final ConcurrentMap<TenantId, TenantRoutingInfo> tenantRoutingInfoMap = new ConcurrentHashMap<>();
@@ -81,12 +81,12 @@ public class HashPartitionService implements PartitionService {
                                 TenantRoutingInfoService tenantRoutingInfoService,
                                 ApplicationEventPublisher applicationEventPublisher,
                                 TbQueueRuleEngineSettings tbQueueRuleEngineSettings,
-                                PartitionResolver resolver) {
+                                PartitionResolverFactory resolverFactory) {
         this.serviceInfoProvider = serviceInfoProvider;
         this.tenantRoutingInfoService = tenantRoutingInfoService;
         this.applicationEventPublisher = applicationEventPublisher;
         this.tbQueueRuleEngineSettings = tbQueueRuleEngineSettings;
-        this.resolver = resolver;
+        this.resolverFactory = resolverFactory;
     }
 
     @PostConstruct
@@ -143,6 +143,7 @@ public class HashPartitionService implements PartitionService {
         TenantId myIsolatedOrSystemTenantId = getSystemOrIsolatedTenantId(currentService);
         myPartitions = new ConcurrentHashMap<>();
         partitionSizes.forEach((serviceQueue, size) -> {
+            PartitionResolver resolver = resolverFactory.createPartitionResolver();
             ServiceQueueKey myServiceQueueKey = new ServiceQueueKey(serviceQueue, myIsolatedOrSystemTenantId);
             for (int i = 0; i < size; i++) {
                 ServiceInfo serviceInfo = resolver.resolveByPartitionIdx(queueServicesMap.get(myServiceQueueKey), i, size);
