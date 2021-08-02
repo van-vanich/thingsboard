@@ -18,7 +18,9 @@ package org.thingsboard.server.queue.discovery;
 import org.thingsboard.server.gen.transport.TransportProtos.ServiceInfo;
 
 import java.util.List;
+import java.util.Map;
 
 public interface PartitionResolver {
-    ServiceInfo resolveByPartitionIdx(List<ServiceInfo> servers, Integer partitionIdx, int totalPartitions);
+    ServiceInfo resolveByPartitionIdx(List<ServiceInfo> servers, Integer partitionIdx);
+    Map<String, ServiceInfo> distributionTopicPartitionsBetweenNodes(List<ServiceInfo> nodes, int partitionSize);
 }

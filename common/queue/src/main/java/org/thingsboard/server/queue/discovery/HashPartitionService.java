@@ -143,10 +143,11 @@ public class HashPartitionService implements PartitionService {
         TenantId myIsolatedOrSystemTenantId = getSystemOrIsolatedTenantId(currentService);
         myPartitions = new ConcurrentHashMap<>();
         partitionSizes.forEach((serviceQueue, size) -> {
-            PartitionResolver resolver = resolverFactory.createPartitionResolver();
             ServiceQueueKey myServiceQueueKey = new ServiceQueueKey(serviceQueue, myIsolatedOrSystemTenantId);
+            PartitionResolver resolver = resolverFactory.createPartitionResolver();
+            resolver.distributionTopicPartitionsBetweenNodes(queueServicesMap.get(myServiceQueueKey), size);
             for (int i = 0; i < size; i++) {
-                ServiceInfo serviceInfo = resolver.resolveByPartitionIdx(queueServicesMap.get(myServiceQueueKey), i, size);
+                ServiceInfo serviceInfo = resolver.resolveByPartitionIdx(queueServicesMap.get(myServiceQueueKey), i);
                 if (currentService.equals(serviceInfo)) {
                     ServiceQueueKey serviceQueueKey = new ServiceQueueKey(serviceQueue, getSystemOrIsolatedTenantId(serviceInfo));
                     myPartitions.computeIfAbsent(serviceQueueKey, key -> new ArrayList<>()).add(i);

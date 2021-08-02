@@ -15,6 +15,7 @@
  */
 package org.thingsboard.server.queue.discovery;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.stereotype.Component;
 
@@ -22,8 +23,11 @@ import org.springframework.stereotype.Component;
 @ConditionalOnExpression("'${queue.partitions.algorithm_name:null}'=='consistent_hashing_with_bounded_loads'")
 public class ConsistentHashingWithBoundedLoadsPartitionResolverFactory implements PartitionResolverFactory {
 
+    @Value("${queue.partitions.virtual_nodes_count:200}")
+    private Integer virtualNodesCount;
+
     @Override
     public PartitionResolver createPartitionResolver() {
-        return new ConsistentHashingWithBoundedLoadsPartitionResolver();
+        return new ConsistentHashingWithBoundedLoadsPartitionResolver(virtualNodesCount);
     }
 }

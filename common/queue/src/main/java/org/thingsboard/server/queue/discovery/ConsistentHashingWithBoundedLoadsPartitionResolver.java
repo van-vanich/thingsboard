@@ -18,7 +18,6 @@ package org.thingsboard.server.queue.discovery;
 import com.google.common.hash.HashFunction;
 import com.google.common.hash.Hashing;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.thingsboard.server.gen.transport.TransportProtos.ServiceInfo;
 
 import java.nio.charset.StandardCharsets;
@@ -34,28 +33,27 @@ public class ConsistentHashingWithBoundedLoadsPartitionResolver implements Parti
 
     private static final String TOPIC_PREFIX = "topic";
 
-    @Value("${queue.partitions.virtual_nodes_count:200}")
     private Integer virtualNodesCount;
 
     private Map<ServiceInfo, Integer> nowInBucket;
     private Map<String, ServiceInfo> topicPartitionMapping;
     private ConcurrentNavigableMap<Long, VirtualServiceInfo> virtualNodeHash = new ConcurrentSkipListMap<>();
 
+    public ConsistentHashingWithBoundedLoadsPartitionResolver(Integer virtualNodesCount) {
+        this.virtualNodesCount = virtualNodesCount;
+    }
+
     @Override
-    public ServiceInfo resolveByPartitionIdx(List<ServiceInfo> servers, Integer partitionIdx, int totalPartitions) {
-        if (servers == null || servers.isEmpty()) {
-            return null;
-        }
-        if (topicPartitionMapping == null) {
-            // TODO - rename calculateTopicPartitionMapping method and move it to interface
-            // make ConsistentHashingWithBoundedLoadsPartitionResolver and RoundRobinPartitionResolver not services, but local objects
-            topicPartitionMapping = calculateTopicPartitionMapping(servers, totalPartitions);
-        }
+    public ServiceInfo resolveByPartitionIdx(List<ServiceInfo> servers, Integer partitionIdx) {
+        // TODO - rename calculateTopicPartitionMapping method and move it to interface
+        //  make ConsistentHashingWithBoundedLoadsPartitionResolver and RoundRobinPartitionResolver not services, but local objects
+
         log.info("topic-{} => {}", partitionIdx, topicPartitionMapping.get(TOPIC_PREFIX + partitionIdx));
         return topicPartitionMapping.get(TOPIC_PREFIX + partitionIdx);
     }
 
-    public Map<String, ServiceInfo> calculateTopicPartitionMapping(List<ServiceInfo> nodes, int partitionSize) {
+    @Override
+    public Map<String, ServiceInfo> distributionTopicPartitionsBetweenNodes(List<ServiceInfo> nodes, int partitionSize) {
         if (nodes == null || partitionSize <= 0 || nodes.size() == 0) {
             return new HashMap<>();
         }
@@ -66,6 +64,7 @@ public class ConsistentHashingWithBoundedLoadsPartitionResolver implements Parti
         virtualNodeHash = createVirtualNodes(nodes);
         Map<String, ServiceInfo> result = searchVirtualNodesForTopics(topics, nodes.size());
         logPartitionDistribution(topics.size(), nodes.size());
+        topicPartitionMapping = result;
         return result;
     }
 
@@ -83,6 +82,7 @@ public class ConsistentHashingWithBoundedLoadsPartitionResolver implements Parti
     ConcurrentSkipListMap<Long, VirtualServiceInfo> createVirtualNodes(List<ServiceInfo> nodes) {
         ConcurrentSkipListMap<Long, VirtualServiceInfo> vNodeHash = new ConcurrentSkipListMap<>();
         nowInBucket = new HashMap<>(nodes.size());
+        System.out.print(virtualNodesCount);
         for (ServiceInfo serviceInfo : nodes) {
             for (int i = 0; i < virtualNodesCount; i++) {
                 VirtualServiceInfo virtualNode = new VirtualServiceInfo(serviceInfo, i);

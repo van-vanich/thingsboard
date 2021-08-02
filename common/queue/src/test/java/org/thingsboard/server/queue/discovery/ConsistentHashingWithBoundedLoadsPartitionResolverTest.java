@@ -39,7 +39,7 @@ import static org.junit.Assert.assertTrue;
 @RunWith(MockitoJUnitRunner.class)
 public class ConsistentHashingWithBoundedLoadsPartitionResolverTest {
 
-    private final ConsistentHashingWithBoundedLoadsPartitionResolver resolver = new ConsistentHashingWithBoundedLoadsPartitionResolver();
+    private final ConsistentHashingWithBoundedLoadsPartitionResolver resolver = new ConsistentHashingWithBoundedLoadsPartitionResolver(200);
 
     @Test
     public void getCeil() {
@@ -81,7 +81,7 @@ public class ConsistentHashingWithBoundedLoadsPartitionResolverTest {
 
     Map<String, ServiceInfo> testResolvePart(int topicsCount, int nodesCount) {
         List<ServiceInfo> nodes = nodesList(nodesCount);
-        Map<String, ServiceInfo> solution = resolver.calculateTopicPartitionMapping(nodes, topicsCount);
+        Map<String, ServiceInfo> solution = resolver.distributionTopicPartitionsBetweenNodes(nodes, topicsCount);
         checkAllError(topicsCount, nodes, solution);
         return solution;
     }
@@ -187,13 +187,13 @@ public class ConsistentHashingWithBoundedLoadsPartitionResolverTest {
         int topics = 6;
         List<ServiceInfo> nodes = nodesList(6);
 
-        Map<String, ServiceInfo> pastState = resolver.calculateTopicPartitionMapping(nodes, topics);
+        Map<String, ServiceInfo> pastState = resolver.distributionTopicPartitionsBetweenNodes(nodes, topics);
         checkAllError(topics, nodes, pastState);
 
         nodes.remove(4);
         nodes.remove(1);
 
-        Map<String, ServiceInfo> presentState = resolver.calculateTopicPartitionMapping(nodes, topics);
+        Map<String, ServiceInfo> presentState = resolver.distributionTopicPartitionsBetweenNodes(nodes, topics);
         countDifferentState(pastState, presentState, nodes.size() + 2, nodes.size());
         checkAllError(topics, nodes, presentState);
     }
@@ -203,13 +203,13 @@ public class ConsistentHashingWithBoundedLoadsPartitionResolverTest {
         int topics = 6;
         List<ServiceInfo> nodes = nodesList(6);
 
-        Map<String, ServiceInfo> pastState = resolver.calculateTopicPartitionMapping(nodes, topics);
+        Map<String, ServiceInfo> pastState = resolver.distributionTopicPartitionsBetweenNodes(nodes, topics);
         checkAllError(topics, nodes, pastState);
 
         nodes.remove((int) (Math.random() * nodes.size()));
         nodes.remove((int) (Math.random() * nodes.size()));
 
-        Map<String, ServiceInfo> presentState = resolver.calculateTopicPartitionMapping(nodes, topics);
+        Map<String, ServiceInfo> presentState = resolver.distributionTopicPartitionsBetweenNodes(nodes, topics);
         countDifferentState(pastState, presentState, nodes.size() + 2, nodes.size());
         checkAllError(topics, nodes, presentState);
     }
@@ -218,7 +218,7 @@ public class ConsistentHashingWithBoundedLoadsPartitionResolverTest {
     public void fourTopicsThreeNodes() {
         int topics = 4;
         List<ServiceInfo> nodes = nodesList(3);
-        Map<String, ServiceInfo> state = resolver.calculateTopicPartitionMapping(nodes, topics);
+        Map<String, ServiceInfo> state = resolver.distributionTopicPartitionsBetweenNodes(nodes, topics);
         checkAllError(topics, nodes, state);
     }
 
@@ -227,12 +227,12 @@ public class ConsistentHashingWithBoundedLoadsPartitionResolverTest {
         int topics = 6;
         List<ServiceInfo> nodes = nodesList(6);
 
-        Map<String, ServiceInfo> pastState = resolver.calculateTopicPartitionMapping(nodes, topics);
+        Map<String, ServiceInfo> pastState = resolver.distributionTopicPartitionsBetweenNodes(nodes, topics);
         checkAllError(topics, nodes, pastState);
         for (int i = 0; i < 6; i++) {
             ServiceInfo nodeRemoved = nodes.get(i);
             nodes.remove(i);
-            Map<String, ServiceInfo> presentState = resolver.calculateTopicPartitionMapping(nodes, topics);
+            Map<String, ServiceInfo> presentState = resolver.distributionTopicPartitionsBetweenNodes(nodes, topics);
             countDifferentState(pastState, presentState, nodes.size() + 1, nodes.size());
             checkAllError(topics, nodes, presentState);
             pastState = presentState;
@@ -245,14 +245,14 @@ public class ConsistentHashingWithBoundedLoadsPartitionResolverTest {
         int topics = 25;
         List<ServiceInfo> nodes = nodesList(20);
 
-        Map<String, ServiceInfo> pastState = resolver.calculateTopicPartitionMapping(nodes, topics);
+        Map<String, ServiceInfo> pastState = resolver.distributionTopicPartitionsBetweenNodes(nodes, topics);
         checkAllError(topics, nodes, pastState);
 
         for (int i = 0; i < 10; i++) {
             nodes.remove(i);
         }
 
-        Map<String, ServiceInfo> presentState = resolver.calculateTopicPartitionMapping(nodes, topics);
+        Map<String, ServiceInfo> presentState = resolver.distributionTopicPartitionsBetweenNodes(nodes, topics);
         checkBalanced(presentState, topics, nodes);
         countDifferentState(pastState, presentState, nodes.size() + 10, nodes.size());
         checkVirtualNodesBetweenTopics(nodes, topics);
@@ -264,14 +264,14 @@ public class ConsistentHashingWithBoundedLoadsPartitionResolverTest {
         int topics = 20;
         List<ServiceInfo> nodes = nodesList(20);
 
-        Map<String, ServiceInfo> pastState = resolver.calculateTopicPartitionMapping(nodes, topics);
+        Map<String, ServiceInfo> pastState = resolver.distributionTopicPartitionsBetweenNodes(nodes, topics);
         checkAllError(topics, nodes, pastState);
 
         for (int i = 0; i < 15; i++) {
             nodes.remove((int) (Math.random() * nodes.size()));
         }
 
-        Map<String, ServiceInfo> presentState = resolver.calculateTopicPartitionMapping(nodes, topics);
+        Map<String, ServiceInfo> presentState = resolver.distributionTopicPartitionsBetweenNodes(nodes, topics);
         checkBalanced(presentState, topics, nodes);
         countDifferentState(pastState, presentState, 20, 5);
         checkVirtualNodesBetweenTopics(nodes, topics);
@@ -282,36 +282,36 @@ public class ConsistentHashingWithBoundedLoadsPartitionResolverTest {
     public void emptyNode() {
         int topics = 20;
         List<ServiceInfo> nodes = nodesList(0);
-        resolver.calculateTopicPartitionMapping(nodes, topics);
+        resolver.distributionTopicPartitionsBetweenNodes(nodes, topics);
     }
 
     @Test
     public void nullNode() {
         int topics = 5;
         List<ServiceInfo> nodes = null;
-        resolver.calculateTopicPartitionMapping(nodes, topics);
+        resolver.distributionTopicPartitionsBetweenNodes(nodes, topics);
     }
 
     @Test
     public void hardTest() {
         int topics = 10000;
         List<ServiceInfo> nodes = nodesList(10000);
-        Map<String, ServiceInfo> state = resolver.calculateTopicPartitionMapping(nodes, topics);
+        Map<String, ServiceInfo> state = resolver.distributionTopicPartitionsBetweenNodes(nodes, topics);
         checkAllError(topics, nodes, state);
         for (int i = 0; i < 5000; i++) {
             nodes.remove((int) (nodes.size() * Math.random()));
         }
-        countDifferentState(state, resolver.calculateTopicPartitionMapping(nodes, topics), 10000, 5000);
+        countDifferentState(state, resolver.distributionTopicPartitionsBetweenNodes(nodes, topics), 10000, 5000);
     }
 
     @Test
     public void deleteFirstNode() {
         int topics = 100;
         List<ServiceInfo> nodes = nodesList(100);
-        Map<String, ServiceInfo> state = resolver.calculateTopicPartitionMapping(nodes, topics);
+        Map<String, ServiceInfo> state = resolver.distributionTopicPartitionsBetweenNodes(nodes, topics);
         checkAllError(topics, nodes, state);
         nodes.remove(0);
-        countDifferentState(state, resolver.calculateTopicPartitionMapping(nodes, topics), 100, 99);
+        countDifferentState(state, resolver.distributionTopicPartitionsBetweenNodes(nodes, topics), 100, 99);
     }
 
     @Test
@@ -319,13 +319,13 @@ public class ConsistentHashingWithBoundedLoadsPartitionResolverTest {
         int topics = 10;
         List<ServiceInfo> nodes = nodesList(4);
 
-        Map<String, ServiceInfo> pastState = resolver.calculateTopicPartitionMapping(nodes, topics);
+        Map<String, ServiceInfo> pastState = resolver.distributionTopicPartitionsBetweenNodes(nodes, topics);
         checkAllError(topics, nodes, pastState);
 
         nodes.add(createServiceInfo(5));
         nodes.add(createServiceInfo(6));
 
-        Map<String, ServiceInfo> presentState = resolver.calculateTopicPartitionMapping(nodes, topics);
+        Map<String, ServiceInfo> presentState = resolver.distributionTopicPartitionsBetweenNodes(nodes, topics);
         countDifferentState(pastState, presentState, nodes.size() - 2, nodes.size());
         checkAllError(topics, nodes, presentState);
     }
@@ -335,7 +335,7 @@ public class ConsistentHashingWithBoundedLoadsPartitionResolverTest {
         int topics = 6;
         List<ServiceInfo> nodes = nodesList(6);
 
-        Map<String, ServiceInfo> pastState = resolver.calculateTopicPartitionMapping(nodes, topics);
+        Map<String, ServiceInfo> pastState = resolver.distributionTopicPartitionsBetweenNodes(nodes, topics);
         checkAllError(topics, nodes, pastState);
 
         ServiceInfo nodeReplaceFirst = nodes.get(2);
@@ -343,14 +343,14 @@ public class ConsistentHashingWithBoundedLoadsPartitionResolverTest {
         nodes.remove(nodeReplaceFirst);
         nodes.remove(nodeReplaceSecond);
 
-        Map<String, ServiceInfo> presentState = resolver.calculateTopicPartitionMapping(nodes, topics);
+        Map<String, ServiceInfo> presentState = resolver.distributionTopicPartitionsBetweenNodes(nodes, topics);
         countDifferentState(pastState, presentState, nodes.size() + 2, nodes.size());
         checkAllError(topics, nodes, presentState);
         pastState = presentState;
 
         nodes.add(nodeReplaceFirst);
         nodes.add(nodeReplaceSecond);
-        presentState = resolver.calculateTopicPartitionMapping(nodes, topics);
+        presentState = resolver.distributionTopicPartitionsBetweenNodes(nodes, topics);
         countDifferentState(pastState, presentState, nodes.size() - 2, nodes.size());
         checkAllError(topics, nodes, presentState);
 
@@ -361,14 +361,14 @@ public class ConsistentHashingWithBoundedLoadsPartitionResolverTest {
         int topics = 20;
         List<ServiceInfo> nodes = nodesList(5);
 
-        Map<String, ServiceInfo> pastState = resolver.calculateTopicPartitionMapping(nodes, 20);
+        Map<String, ServiceInfo> pastState = resolver.distributionTopicPartitionsBetweenNodes(nodes, 20);
         checkAllError(topics, nodes, pastState);
 
         for (int i = 6; i <= 20; i++) {
             nodes.add(createServiceInfo(i));
         }
 
-        Map<String, ServiceInfo> presentState = resolver.calculateTopicPartitionMapping(nodes, topics);
+        Map<String, ServiceInfo> presentState = resolver.distributionTopicPartitionsBetweenNodes(nodes, topics);
         checkAllError(topics, nodes, presentState);
         countDifferentState(pastState, presentState, nodes.size() - 15, nodes.size());
 

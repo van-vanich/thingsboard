@@ -17,21 +17,25 @@ package org.thingsboard.server.queue.discovery;
 
 
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
-import org.springframework.stereotype.Service;
 import org.thingsboard.server.gen.transport.TransportProtos.ServiceInfo;
 
 import java.util.List;
+import java.util.Map;
 
 @Slf4j
 public class RoundRobinPartitionResolver implements PartitionResolver {
 
     @Override
-    public ServiceInfo resolveByPartitionIdx(List<ServiceInfo> servers, Integer partitionIdx, int totalPartitions) {
+    public ServiceInfo resolveByPartitionIdx(List<ServiceInfo> servers, Integer partitionIdx) {
         if (servers == null || servers.isEmpty()) {
             return null;
         }
         log.info("Distributed say {} to {}", partitionIdx, servers.get(partitionIdx % servers.size()));
         return servers.get(partitionIdx % servers.size());
+    }
+
+    @Override
+    public Map<String, ServiceInfo> distributionTopicPartitionsBetweenNodes(List<ServiceInfo> nodes, int partitionSize) {
+        return null;
     }
 }
