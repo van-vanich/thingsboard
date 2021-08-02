@@ -38,8 +38,6 @@ import java.util.concurrent.ConcurrentSkipListMap;
 public class ConsistentHashingWithBoundedLoadsPartitionResolver implements PartitionResolver {
 
     private static final String TOPIC_PREFIX = "topic";
-
-
     @Value("${queue.partitions.virtual_nodes_count:200}")
     private Integer virtualNodesCount;
 
