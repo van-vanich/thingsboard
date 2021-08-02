@@ -79,16 +79,16 @@ public class ConsistentHashingWithBoundedLoadsPartitionResolver implements Parti
     }
 
     private List<ServiceInfo> sortNodes(List<ServiceInfo> nodes) {
-        Map<String, ServiceInfo> forSort = new HashMap<>(nodes.size());
-        List<String> save = new ArrayList<>(forSort.size());
+        Map<String, ServiceInfo> saveStringFormatAndObject = new HashMap<>(nodes.size());
+        List<String> saveToString = new ArrayList<>(saveStringFormatAndObject.size());
         List<ServiceInfo> result = new ArrayList<>(nodes.size());
         for (ServiceInfo serviceInfo : nodes) {
-            forSort.put(serviceInfo.toString(), serviceInfo);
-            save.add(serviceInfo.toString());
+            saveStringFormatAndObject.put(serviceInfo.toString(), serviceInfo);
+            saveToString.add(serviceInfo.toString());
         }
-        Collections.sort(save);
-        for (String service : save) {
-            result.add(forSort.get(service));
+        Collections.sort(saveToString);
+        for (String service : saveToString) {
+            result.add(saveStringFormatAndObject.get(service));
         }
         return result;
     }
