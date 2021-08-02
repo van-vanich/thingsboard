@@ -24,6 +24,7 @@ import org.thingsboard.server.gen.transport.TransportProtos.ServiceInfo;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -50,6 +51,7 @@ public class ConsistentHashingWithBoundedLoadsPartitionResolver implements Parti
     @Override
     public ServiceInfo resolveByPartitionIdx(List<ServiceInfo> servers, Integer partitionIdx, int partitionSize) {
         Map<String, ServiceInfo> topicPartitionMapping = storage.get(new PairForCaching(servers, partitionSize));
+        servers = sortNodes(servers);
         if (topicPartitionMapping == null) return null;
         log.info("topic-{} => {}", partitionIdx, topicPartitionMapping.get(TOPIC_PREFIX + partitionIdx));
         return topicPartitionMapping.get(TOPIC_PREFIX + partitionIdx);
@@ -60,6 +62,7 @@ public class ConsistentHashingWithBoundedLoadsPartitionResolver implements Parti
         if (nodes == null || partitionSize <= 0 || nodes.size() == 0) {
             return new HashMap<>();
         }
+        nodes = sortNodes(nodes);
         PairForCaching pair = new PairForCaching(nodes, partitionSize);
         if (storage.get(pair) != null) {
             return storage.get(pair);
@@ -72,6 +75,21 @@ public class ConsistentHashingWithBoundedLoadsPartitionResolver implements Parti
         Map<String, ServiceInfo> result = searchVirtualNodesForTopics(topics, nodes.size());
         logPartitionDistribution(topics.size(), nodes.size());
         storage.put(pair,result);
+        return result;
+    }
+
+    private List<ServiceInfo> sortNodes(List<ServiceInfo> nodes) {
+        Map<String, ServiceInfo> forSort = new HashMap<>(nodes.size());
+        List<String> save = new ArrayList<>(forSort.size());
+        List<ServiceInfo> result = new ArrayList<>(nodes.size());
+        for (ServiceInfo serviceInfo : nodes) {
+            forSort.put(serviceInfo.toString(), serviceInfo);
+            save.add(serviceInfo.toString());
+        }
+        Collections.sort(save);
+        for (String service : save) {
+            result.add(forSort.get(service));
+        }
         return result;
     }
 
