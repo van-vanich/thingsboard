@@ -15,6 +15,15 @@
  */
 package org.thingsboard.server.queue.discovery;
 
-public interface PartitionResolverFactory {
-    PartitionResolver createPartitionResolver();
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.thingsboard.server.gen.transport.TransportProtos.ServiceInfo;
+
+import java.util.List;
+
+@Slf4j
+@RequiredArgsConstructor
+public class PairForCaching {
+    private final List<ServiceInfo> nodes;
+    private final Integer partitionCount;
 }

@@ -17,16 +17,20 @@ package org.thingsboard.server.queue.discovery;
 
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
+import org.springframework.stereotype.Service;
 import org.thingsboard.server.gen.transport.TransportProtos.ServiceInfo;
 
 import java.util.List;
 import java.util.Map;
 
 @Slf4j
+@Service
+@ConditionalOnExpression("'${queue.partitions.replace_algorithm_name:null}'=='distributed'")
 public class RoundRobinPartitionResolver implements PartitionResolver {
 
     @Override
-    public ServiceInfo resolveByPartitionIdx(List<ServiceInfo> servers, Integer partitionIdx) {
+    public ServiceInfo resolveByPartitionIdx(List<ServiceInfo> servers, Integer partitionIdx, int partitionSize) {
         if (servers == null || servers.isEmpty()) {
             return null;
         }

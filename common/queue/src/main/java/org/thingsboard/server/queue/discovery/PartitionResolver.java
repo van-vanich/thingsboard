@@ -21,6 +21,6 @@ import java.util.List;
 import java.util.Map;
 
 public interface PartitionResolver {
-    ServiceInfo resolveByPartitionIdx(List<ServiceInfo> servers, Integer partitionIdx);
+    ServiceInfo resolveByPartitionIdx(List<ServiceInfo> servers, Integer partitionIdx, int partitionSize);
     Map<String, ServiceInfo> distributionTopicPartitionsBetweenNodes(List<ServiceInfo> nodes, int partitionSize);
 }
