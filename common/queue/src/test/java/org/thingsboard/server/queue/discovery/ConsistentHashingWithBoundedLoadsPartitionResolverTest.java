@@ -39,7 +39,7 @@ import static org.junit.Assert.assertTrue;
 @RunWith(MockitoJUnitRunner.class)
 public class ConsistentHashingWithBoundedLoadsPartitionResolverTest {
 
-    private final ConsistentHashingWithBoundedLoadsPartitionResolver resolver = new ConsistentHashingWithBoundedLoadsPartitionResolver(200);
+    private final ConsistentHashingWithBoundedLoadsPartitionResolver resolver = new ConsistentHashingWithBoundedLoadsPartitionResolver();
 
     @Test
     public void getCeil() {

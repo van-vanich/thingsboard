@@ -18,6 +18,7 @@ package org.thingsboard.server.queue.discovery;
 import com.google.common.hash.HashFunction;
 import com.google.common.hash.Hashing;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.stereotype.Service;
 import org.thingsboard.server.gen.transport.TransportProtos.ServiceInfo;
@@ -33,23 +34,24 @@ import java.util.concurrent.ConcurrentSkipListMap;
 
 @Slf4j
 @Service
-@ConditionalOnExpression("'${queue.partitions.replace_algorithm_name:null}'=='consistent_hashing_with_bounded_loads'")
+@ConditionalOnExpression("'${queue.partitions.algorithm_name:null}'=='consistent_hashing_with_bounded_loads'")
 public class ConsistentHashingWithBoundedLoadsPartitionResolver implements PartitionResolver {
 
     private static final String TOPIC_PREFIX = "topic";
 
+
+    @Value("${queue.partitions.virtual_nodes_count:200}")
     private Integer virtualNodesCount;
 
     private Map<ServiceInfo, Integer> nowInBucket;
     private ConcurrentNavigableMap<Long, VirtualServiceInfo> virtualNodeHash = new ConcurrentSkipListMap<>();
     private Map<PairForCaching, Map<String, ServiceInfo>> storage = new HashMap<>();
 
-    public ConsistentHashingWithBoundedLoadsPartitionResolver(Integer virtualNodesCount) {
-        this.virtualNodesCount = virtualNodesCount;
-    }
-
     @Override
     public ServiceInfo resolveByPartitionIdx(List<ServiceInfo> servers, Integer partitionIdx, int partitionSize) {
+        if (servers == null || servers.isEmpty()) {
+            return null;
+        }
         servers = sortNodes(servers);
         Map<String, ServiceInfo> topicPartitionMapping = storage.get(new PairForCaching(servers, partitionSize));
         if (topicPartitionMapping == null) return null;
