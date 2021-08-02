@@ -50,8 +50,8 @@ public class ConsistentHashingWithBoundedLoadsPartitionResolver implements Parti
 
     @Override
     public ServiceInfo resolveByPartitionIdx(List<ServiceInfo> servers, Integer partitionIdx, int partitionSize) {
-        Map<String, ServiceInfo> topicPartitionMapping = storage.get(new PairForCaching(servers, partitionSize));
         servers = sortNodes(servers);
+        Map<String, ServiceInfo> topicPartitionMapping = storage.get(new PairForCaching(servers, partitionSize));
         if (topicPartitionMapping == null) return null;
         log.info("topic-{} => {}", partitionIdx, topicPartitionMapping.get(TOPIC_PREFIX + partitionIdx));
         return topicPartitionMapping.get(TOPIC_PREFIX + partitionIdx);
