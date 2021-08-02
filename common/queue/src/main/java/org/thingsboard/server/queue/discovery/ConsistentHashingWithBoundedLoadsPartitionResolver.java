@@ -33,7 +33,7 @@ import java.util.concurrent.ConcurrentSkipListMap;
 
 @Slf4j
 @Service
-@ConditionalOnExpression("'${queue.partitions.replace_algorithm_name:null}'=='consistent'")
+@ConditionalOnExpression("'${queue.partitions.replace_algorithm_name:null}'=='consistent_hashing_with_bounded_loads'")
 public class ConsistentHashingWithBoundedLoadsPartitionResolver implements PartitionResolver {
 
     private static final String TOPIC_PREFIX = "topic";

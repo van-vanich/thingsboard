@@ -26,7 +26,7 @@ import java.util.Map;
 
 @Slf4j
 @Service
-@ConditionalOnExpression("'${queue.partitions.replace_algorithm_name:null}'=='distributed'")
+@ConditionalOnExpression("'${queue.partitions.replace_algorithm_name:null}'=='round_robin'")
 public class RoundRobinPartitionResolver implements PartitionResolver {
 
     @Override
