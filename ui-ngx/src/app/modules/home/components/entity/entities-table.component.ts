@@ -1,5 +1,5 @@
 ///
-/// Copyright © 2016-2021 The Thingsboard Authors
+/// Copyright © 2016-2022 The Thingsboard Authors
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -64,6 +64,7 @@ import { HasUUID } from '@shared/models/id/has-uuid';
 import { ResizeObserver } from '@juggle/resize-observer';
 import { hidePageSizePixelValue } from '@shared/models/constants';
 import { IEntitiesTableComponent } from '@home/models/entity/entity-table-component.models';
+import { EntityDetailsPanelComponent } from '@home/components/entity/entity-details-panel.component';
 
 @Component({
   selector: 'tb-entities-table',
@@ -117,6 +118,8 @@ export class EntitiesTableComponent extends PageComponent implements IEntitiesTa
 
   @ViewChild(MatPaginator) paginator: MatPaginator;
   @ViewChild(MatSort) sort: MatSort;
+
+  @ViewChild('entityDetailsPanel') entityDetailsPanel: EntityDetailsPanelComponent;
 
   private updateDataSubscription: Subscription;
   private viewInited = false;
@@ -172,6 +175,7 @@ export class EntitiesTableComponent extends PageComponent implements IEntitiesTa
   private init(entitiesTableConfig: EntityTableConfig<BaseData<HasId>>) {
     this.isDetailsOpen = false;
     this.entitiesTableConfig = entitiesTableConfig;
+    this.pageMode = this.entitiesTableConfig.pageMode;
     if (this.entitiesTableConfig.headerComponent) {
       const componentFactory = this.componentFactoryResolver.resolveComponentFactory(this.entitiesTableConfig.headerComponent);
       const viewContainerRef = this.entityTableHeaderAnchor.viewContainerRef;
@@ -181,7 +185,7 @@ export class EntitiesTableComponent extends PageComponent implements IEntitiesTa
       headerComponent.entitiesTableConfig = this.entitiesTableConfig;
     }
 
-    this.entitiesTableConfig.table = this;
+    this.entitiesTableConfig.setTable(this);
     this.translations = this.entitiesTableConfig.entityTranslations;
 
     this.headerActionDescriptors = [...this.entitiesTableConfig.headerActionDescriptors];
@@ -217,16 +221,22 @@ export class EntitiesTableComponent extends PageComponent implements IEntitiesTa
     const routerQueryParams: PageQueryParam = this.route.snapshot.queryParams;
 
     let sortOrder: SortOrder = null;
-    if (this.entitiesTableConfig.defaultSortOrder || routerQueryParams.hasOwnProperty('direction') || routerQueryParams.hasOwnProperty('property')) {
+    if (this.pageMode) {
+      if (this.entitiesTableConfig.defaultSortOrder || routerQueryParams.hasOwnProperty('direction') || routerQueryParams.hasOwnProperty('property')) {
+        sortOrder = {
+          property: routerQueryParams?.property || this.entitiesTableConfig.defaultSortOrder.property,
+          direction: routerQueryParams?.direction || this.entitiesTableConfig.defaultSortOrder.direction
+        };
+      }
+    } else if (this.entitiesTableConfig.defaultSortOrder){
       sortOrder = {
-        property: routerQueryParams?.property || this.entitiesTableConfig.defaultSortOrder.property,
-        direction: routerQueryParams?.direction || this.entitiesTableConfig.defaultSortOrder.direction
+        property: this.entitiesTableConfig.defaultSortOrder.property,
+        direction: this.entitiesTableConfig.defaultSortOrder.direction
       };
     }
 
     this.displayPagination = this.entitiesTableConfig.displayPagination;
     this.defaultPageSize = this.entitiesTableConfig.defaultPageSize;
-    this.pageMode = this.entitiesTableConfig.pageMode;
     this.pageSizeOptions = [this.defaultPageSize, this.defaultPageSize * 2, this.defaultPageSize * 3];
 
     if (this.entitiesTableConfig.useTimePageLink) {
@@ -238,15 +248,17 @@ export class EntitiesTableComponent extends PageComponent implements IEntitiesTa
       this.pageLink = new PageLink(10, 0, null, sortOrder);
     }
     this.pageLink.pageSize = this.displayPagination ? this.defaultPageSize : MAX_SAFE_PAGE_SIZE;
-    if (routerQueryParams.hasOwnProperty('page')) {
-      this.pageLink.page = Number(routerQueryParams.page);
-    }
-    if (routerQueryParams.hasOwnProperty('pageSize')) {
-      this.pageLink.pageSize = Number(routerQueryParams.pageSize);
-    }
-    if (routerQueryParams.hasOwnProperty('textSearch') && !isEmptyStr(routerQueryParams.textSearch)) {
-      this.textSearchMode = true;
-      this.pageLink.textSearch = decodeURI(routerQueryParams.textSearch);
+    if (this.pageMode) {
+      if (routerQueryParams.hasOwnProperty('page')) {
+        this.pageLink.page = Number(routerQueryParams.page);
+      }
+      if (routerQueryParams.hasOwnProperty('pageSize')) {
+        this.pageLink.pageSize = Number(routerQueryParams.pageSize);
+      }
+      if (routerQueryParams.hasOwnProperty('textSearch') && !isEmptyStr(routerQueryParams.textSearch)) {
+        this.textSearchMode = true;
+        this.pageLink.textSearch = decodeURI(routerQueryParams.textSearch);
+      }
     }
     this.dataSource = this.entitiesTableConfig.dataSource(this.dataLoaded.bind(this));
     if (this.entitiesTableConfig.onLoadAction) {
@@ -383,6 +395,9 @@ export class EntitiesTableComponent extends PageComponent implements IEntitiesTa
       }
     }
     this.dataSource.loadEntities(this.pageLink);
+    if (this.isDetailsOpen && this.entityDetailsPanel) {
+      this.entityDetailsPanel.reloadEntity();
+    }
   }
 
   private dataLoaded(col?: number, row?: number) {

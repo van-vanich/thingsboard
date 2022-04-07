@@ -1,5 +1,5 @@
 /**
- * Copyright © 2016-2021 The Thingsboard Authors
+ * Copyright © 2016-2022 The Thingsboard Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -36,7 +36,9 @@ public class IpFilter extends AbstractRemoteAddressFilter<InetSocketAddress> {
 
     @Override
     protected boolean accept(ChannelHandlerContext ctx, InetSocketAddress remoteAddress) throws Exception {
+        log.trace("[{}] Received msg: {}", ctx.channel().id(), remoteAddress);
         if(context.checkAddress(remoteAddress)){
+            log.trace("[{}] Setting address: {}", ctx.channel().id(), remoteAddress);
             ctx.channel().attr(MqttTransportService.ADDRESS).set(remoteAddress);
             return true;
         } else {

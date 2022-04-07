@@ -1,5 +1,5 @@
 /**
- * Copyright © 2016-2021 The Thingsboard Authors
+ * Copyright © 2016-2022 The Thingsboard Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -142,7 +142,7 @@ public class BaseEntityService extends AbstractEntityService implements EntitySe
                 hasName = entityViewService.findEntityViewByIdAsync(tenantId, new EntityViewId(entityId.getId()));
                 break;
             case TENANT:
-                hasName = tenantService.findTenantByIdAsync(tenantId, new TenantId(entityId.getId()));
+                hasName = tenantService.findTenantByIdAsync(tenantId, TenantId.fromUUID(entityId.getId()));
                 break;
             case CUSTOMER:
                 hasName = customerService.findCustomerByIdAsync(tenantId, new CustomerId(entityId.getId()));

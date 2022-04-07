@@ -1,5 +1,5 @@
 /**
- * Copyright © 2016-2021 The Thingsboard Authors
+ * Copyright © 2016-2022 The Thingsboard Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,6 +22,7 @@ import lombok.AccessLevel;
 import lombok.Data;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.util.StringUtils;
 import org.thingsboard.server.common.data.EntityType;
 import org.thingsboard.server.common.data.id.CustomerId;
 import org.thingsboard.server.common.data.id.EntityId;
@@ -295,5 +296,16 @@ public final class TbMsg implements Serializable {
      */
     public boolean isValid() {
         return getCallback().isMsgValid();
+    }
+
+    public long getMetaDataTs() {
+        String tsStr = metaData.getValue("ts");
+        if (!StringUtils.isEmpty(tsStr)) {
+            try {
+                return Long.parseLong(tsStr);
+            } catch (NumberFormatException ignored) {
+            }
+        }
+        return ts;
     }
 }
